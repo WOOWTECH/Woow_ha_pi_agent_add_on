@@ -14,7 +14,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Node.js 22 (pi-web requires >=22.19.0). glibc-based Debian base is required
 # because Bun / pi native modules will not run on Alpine musl.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl gnupg jq \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg jq nginx \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
@@ -23,7 +23,7 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /etc/nginx/sites-enabled/default /etc/nginx/conf.d/*
 
 # pi-web ships pre-built .next/ in the npm tarball; @earendil-works/pi-coding-agent
 # is a transitive dep, so no separate agent daemon is needed.

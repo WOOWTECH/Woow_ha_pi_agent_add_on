@@ -47,5 +47,5 @@ Because the URL rides on your existing Home Assistant hostname/port, it works tr
 - **Add-on won't start with "api_key is required"** — open Configuration tab, paste key, save, then start.
 - **UI loads but chat returns 401** — API key wrong or GLM quota exhausted. Rotate the key in Configuration; add-on restarts automatically.
 - **"Open Web UI" button does nothing / 404 from ingress** — reload HA (`ha core restart`); the ingress token is minted at add-on start and occasionally needs the Supervisor to re-register the panel.
-- **Assets 404 under ingress prefix (blank page, network tab shows `/_next/...` 404s)** — this is the Next.js absolute-path issue noted in `CHANGELOG.md`. Track / report at the add-on repo; the workaround is a rewriting proxy in front of pi-web, planned for a future release.
+- **Assets 404 under ingress prefix (blank page, network tab shows `/_next/...` 404s)** — should be handled by the nginx sub_filter wrapper (`nginx` s6 service). Check `ha addons logs b9cf5676_woow_ha_pi_agent` for nginx errors; look for a request path that does not start with `X-Ingress-Path`, which means Supervisor didn't inject the header.
 - **"Host not allowed" from pi-web** — you're reaching pi-web through a reverse proxy in front of HA that changes the `Host:` header. Add that host to `extra_allowed_hosts` (comma-separated).
