@@ -1,9 +1,8 @@
 name: Woow HA Pi Agent
-version: "0.1.0"
+version: "0.2.0"
 slug: woow_ha_pi_agent
 description: pi-web (agegr/pi-web) + pi coding agent SDK (earendil-works/pi), pre-wired to WoowTech GLM (智譜清言)
 url: https://github.com/WOOWTECH/Woow_ha_pi_agent_add_on
-webui: "http://[HOST]:[PORT:30141]"
 hassio_api: true
 arch:
   - amd64
@@ -19,10 +18,11 @@ map:
 backup: cold
 backup_exclude:
   - "**/sessions/*.jsonl.tmp"
-ports:
-  30141/tcp: 30141
-ports_description:
-  30141/tcp: pi-web UI
+ingress: true
+ingress_port: 30141
+panel_icon: mdi:robot
+panel_title: Pi Agent
+panel_admin: true
 options:
   api_key: ""
   extra_allowed_hosts: ""

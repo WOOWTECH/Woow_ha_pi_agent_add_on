@@ -21,26 +21,16 @@ To add or override models, edit them in pi-web's **Models** panel or edit `/data
 
 ## Accessing the UI
 
-The add-on exposes pi-web on TCP `30141`. Reach it at:
+pi-web is served through **HA Supervisor Ingress** at `/hassio/ingress/woow_ha_pi_agent` — no ports are published on the LAN. Two easy entry points:
 
-```
-http://<home-assistant-ip>:30141
-```
+- **Open Web UI** button on the add-on's Info tab
+- **Pi Agent** entry in the HA sidebar (visible to admins only; controlled by `panel_admin: true` in `config.yaml`)
 
-To pin it in the HA sidebar, add this to `configuration.yaml` and restart HA:
-
-```yaml
-panel_iframe:
-  pi_agent:
-    title: Pi Agent
-    url: "http://homeassistant.local:30141"
-    icon: mdi:robot
-    require_admin: true
-```
+Because the URL rides on your existing Home Assistant hostname/port, it works transparently over HA's local network, Nabu Casa remote UI, or any reverse proxy already fronting HA.
 
 ## Security notes
 
-- pi-web has **no application-level authentication**. Only expose it on trusted networks. The `panel_iframe` above respects `require_admin: true`, which restricts the sidebar link to HA admins — but the underlying `:30141` port is open to anyone on the LAN who knows the URL.
+- pi-web has **no application-level authentication**. Access control is delegated to Home Assistant: only HA users can hit the ingress endpoint, and the sidebar tile is gated to admins via `panel_admin: true`.
 - The GLM API key is stored in `/data/options.json` inside the add-on container (managed by HA Supervisor) and passed to pi as `$GLM_API_KEY`. Neither the add-on nor pi log the value.
 - Sessions and models config live under `/data/pi-agent/` — backed up by HA's snapshot system automatically.
 
@@ -56,5 +46,6 @@ panel_iframe:
 
 - **Add-on won't start with "api_key is required"** — open Configuration tab, paste key, save, then start.
 - **UI loads but chat returns 401** — API key wrong or GLM quota exhausted. Rotate the key in Configuration; add-on restarts automatically.
-- **UI unreachable at `:30141`** — check that `ports: 30141/tcp: 30141` was accepted (Configuration → Network); some HA setups require confirming the port mapping in the UI after first install.
-- **"Host not allowed" from pi-web** — you're accessing via a custom hostname. Add it to `extra_allowed_hosts` (comma-separated).
+- **"Open Web UI" button does nothing / 404 from ingress** — reload HA (`ha core restart`); the ingress token is minted at add-on start and occasionally needs the Supervisor to re-register the panel.
+- **Assets 404 under ingress prefix (blank page, network tab shows `/_next/...` 404s)** — this is the Next.js absolute-path issue noted in `CHANGELOG.md`. Track / report at the add-on repo; the workaround is a rewriting proxy in front of pi-web, planned for a future release.
+- **"Host not allowed" from pi-web** — you're reaching pi-web through a reverse proxy in front of HA that changes the `Host:` header. Add that host to `extra_allowed_hosts` (comma-separated).

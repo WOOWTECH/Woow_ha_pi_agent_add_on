@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- Switch UI exposure from published TCP port to **HA Supervisor Ingress** so the add-on works on standard HAOS without any firewall carve-out — LAN reachable via the Home Assistant UI at `/hassio/ingress/woow_ha_pi_agent`
+- Add sidebar panel (`panel_title: Pi Agent`, `panel_icon: mdi:robot`, `panel_admin: true`) — admins see it directly in the HA sidebar
+- Remove `ports:` / `webui:` — pi-web now only binds inside the container; Ingress proxies to `:30141`
+- Known caveat: pi-web's pre-built Next.js assets are served from absolute `/_next/...` paths. If assets 404 under the Ingress prefix a future patch will add a rewriting reverse proxy in front of pi-web.
+
 ## 0.1.0
 
 Initial release.
