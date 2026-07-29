@@ -1,0 +1,6 @@
+# Never commit secrets — the add-on takes api_key via HA UI at install time
+options.json
+*.key
+*.pem
+.env
+.DS_Store

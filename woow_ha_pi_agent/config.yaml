@@ -1,0 +1,27 @@
+name: Woow HA Pi Agent
+version: "0.1.0"
+slug: woow_ha_pi_agent
+description: pi-web (agegr/pi-web) + pi coding agent SDK (earendil-works/pi), pre-wired to GLM
+url: https://github.com/WOOWTECH/Woow_ha_pi_agent_add_on
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+hassio_api: false
+homeassistant_api: false
+host_network: false
+ports:
+  30141/tcp: 30141
+ports_description:
+  30141/tcp: pi-web UI
+map:
+  - data:rw
+options:
+  api_key: ""
+  extra_allowed_hosts: ""
+schema:
+  api_key: password
+  extra_allowed_hosts: str?
+image: ghcr.io/woowtech/woow-ha-pi-agent-{arch}

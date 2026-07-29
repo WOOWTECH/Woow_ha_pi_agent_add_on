@@ -1,0 +1,58 @@
+#!/command/with-contenv bashio
+set -e
+
+DATA_DIR=/data/pi-agent
+mkdir -p "${DATA_DIR}/sessions"
+
+# --- Config from HA UI (options.json) ---
+bashio::config.require 'api_key'
+GLM_API_KEY="$(bashio::config 'api_key')"
+
+EXTRA_ALLOWED_HOSTS="$(bashio::config 'extra_allowed_hosts' '')"
+
+# --- Seed models.json only if user has never created one via the UI ---
+# pi resolves $GLM_API_KEY at request time, so rotating the add-on option
+# takes effect on restart without rewriting this file.
+MODELS_JSON="${DATA_DIR}/models.json"
+if [ ! -f "${MODELS_JSON}" ]; then
+  bashio::log.info "Bootstrapping ${MODELS_JSON} with GLM (anthropic-messages) provider"
+  cat > "${MODELS_JSON}" <<'EOF'
+{
+  "providers": {
+    "glm": {
+      "baseUrl": "https://open.bigmodel.cn/api/anthropic",
+      "api": "anthropic-messages",
+      "apiKey": "$GLM_API_KEY",
+      "models": [
+        {
+          "id": "glm-4.6",
+          "name": "GLM-4.6",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 200000,
+          "maxTokens": 16384,
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+        }
+      ]
+    }
+  }
+}
+EOF
+fi
+
+# --- Runtime env for pi-web ---
+export GLM_API_KEY
+export PI_CODING_AGENT_DIR="${DATA_DIR}"
+export PI_WEB_HOSTNAME="0.0.0.0"
+export PI_WEB_NO_OPEN=1
+export PORT=30141
+
+# pi-web auto-accepts IP literals and loopback names. Only override if the
+# user browses via a custom hostname behind a reverse proxy.
+if [ -n "${EXTRA_ALLOWED_HOSTS}" ] && [ "${EXTRA_ALLOWED_HOSTS}" != "null" ]; then
+  export PI_WEB_ALLOWED_HOSTS="${EXTRA_ALLOWED_HOSTS}"
+  bashio::log.info "PI_WEB_ALLOWED_HOSTS=${PI_WEB_ALLOWED_HOSTS}"
+fi
+
+bashio::log.info "Starting pi-web on 0.0.0.0:30141 (data: ${PI_CODING_AGENT_DIR})"
+exec pi-web
