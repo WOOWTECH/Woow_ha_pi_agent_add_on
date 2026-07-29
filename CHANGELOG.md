@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1
+
+- Emergency hotfix for v0.7.0's regression: every `/_next/static/**` asset returned `404` with `text/plain` MIME (browser then refuses to execute the JS chunks, the whole Pi Agent UI shows a blank iframe). Root cause was a typo in the `map` block that was supposed to whitelist-validate `X-Ingress-Path` — the source variable had been rewritten from `$http_x_ingress_path` to `$safe_ingress_path` by a stray `replace_all`, so the map became `map $safe_ingress_path $safe_ingress_path { ... }` (self-referential, never defined, always coerced to `""`). Every `sub_filter '…$safe_ingress_path/_next/…'` template then substituted with an empty prefix, leaving `href="/_next/…"` in the HTML — the browser resolved that against HA Core, got 404, and everything downstream cascaded. The XSS-hardening intent of v0.7.0 is preserved; the fix is just restoring `$http_x_ingress_path` as the map's source variable.
+
 ## 0.7.0
 
 - Fix the follow-on "iframe goes blank after picking a project" bug uncovered by Playwright browser QA. Root cause: pi-web's Next.js Router calls `router.push('/')` after the project picker resolves, which under the hood does two things v0.6.0's shim did not handle — (1) fetches an RSC payload on the current pathname with `?_rsc=<token>` appended (for the root that's `/?_rsc=…`, which starts with `/?` not `/api/`, so the shim's `isTargetPath()` filter passed it through unchanged and the browser resolved it against HA Core at `https://<HA-host>/?_rsc=…`, getting the HA dashboard HTML back and crashing the Next.js client with `TypeError: Failed to fetch`), and (2) updates the URL bar via `history.pushState('/')` which then makes every subsequent `location.pathname`-relative fetch escape the ingress prefix.
