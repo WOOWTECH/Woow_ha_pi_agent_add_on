@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+- Close the last set of console 404s uncovered in v0.9.0 QA: `.woff2` fonts (4×), a CSS asset served as `text/plain 404`, and `favicon.ico?<hash>` all failing to load. Root cause: after hydration, `ReactDOM.preinit()` and `next/font`'s runtime inject fresh `<link href="/_next/…">` and `<link href="/favicon.ico?…">` elements straight into the DOM — the browser fetches those assets by walking the element tree, so none of the v0.7.x fetch / EventSource / XMLHttpRequest wrappers ever see the URL. Cached CSS was masking the visual impact, but the network tab was loud and it would have bitten anyone on a cold cache or an offline reload.
+  - Extend the `</head>` shim with a fourth interception layer: `Element.prototype.setAttribute` is wrapped so `href=` / `src=` writes go through the same `S() → T() → P+` normalizer used by fetch, and `HTMLLinkElement.prototype.href` / `HTMLScriptElement.prototype.src` / `HTMLImageElement.prototype.src` property setters are re-defined to do the same. React's DOM writes go through either path depending on the injection strategy, so we cover both.
+  - No changes to `T()` — favicon and `/_next/` prefixes already matched, the URLs just weren't reaching it. Keeping the predicate untouched means script-tag hardcoded paths, RSC prefetches, and history rewrites still behave identically to v0.9.0.
+
 ## 0.9.0
 
 - Broaden the built-in provider set from GLM+MiniMax to **GLM + MiniMax + OpenAI + OpenRouter**, so the addon isn't stuck on providers that require topping up a Chinese-side account. Real-world driver: the shipped GLM key hit `code 1113 余额不足` (out of credits) and MiniMax `1008 insufficient_balance` on the QA account; OpenAI + OpenRouter both returned 200 with the same self-check curl, so having them as first-class options removes the "install → chat 500s → open .jsonl → discover it's a credit issue" trap for new users.
