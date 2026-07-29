@@ -11,11 +11,6 @@ mkdir -p "${DATA_DIR}/sessions"
 MODELS_JSON="${DATA_DIR}/models.json"
 
 # --- Auto-enable sidebar panel ---
-# config.yaml's panel_title/panel_icon/panel_admin only supply *defaults*
-# for the ingress_panel Supervisor state; the sidebar entry only sticks
-# after "Show in sidebar" toggles ingress_panel=true. We flip it via the
-# Supervisor API on every boot so a fresh install just works without the
-# user hunting for the toggle on the addon Info page.
 if [ -n "${SUPERVISOR_TOKEN}" ]; then
   if curl -sSL --max-time 5 -o /dev/null -w '%{http_code}' \
       -X POST \
@@ -30,10 +25,24 @@ if [ -n "${SUPERVISOR_TOKEN}" ]; then
 fi
 
 # --- Config from HA UI (options.json) ---
-bashio::config.require 'api_key'
-GLM_API_KEY="$(bashio::config 'api_key')"
+GLM_API_KEY="$(bashio::config 'api_key' '')"
 MINIMAX_API_KEY="$(bashio::config 'minimax_api_key' '')"
+OPENAI_API_KEY="$(bashio::config 'openai_api_key' '')"
+OPENROUTER_API_KEY="$(bashio::config 'openrouter_api_key' '')"
 EXTRA_ALLOWED_HOSTS="$(bashio::config 'extra_allowed_hosts' '')"
+
+norm() { [ "${1}" = "null" ] && echo "" || echo "${1}"; }
+GLM_API_KEY="$(norm "${GLM_API_KEY}")"
+MINIMAX_API_KEY="$(norm "${MINIMAX_API_KEY}")"
+OPENAI_API_KEY="$(norm "${OPENAI_API_KEY}")"
+OPENROUTER_API_KEY="$(norm "${OPENROUTER_API_KEY}")"
+
+# At least one provider key must be present — otherwise the UI boots but the
+# model dropdown is empty and every chat attempt fails cryptically.
+if [ -z "${GLM_API_KEY}" ] && [ -z "${MINIMAX_API_KEY}" ] && [ -z "${OPENAI_API_KEY}" ] && [ -z "${OPENROUTER_API_KEY}" ]; then
+  bashio::log.fatal "No provider key configured — set at least one of api_key (GLM), minimax_api_key, openai_api_key, openrouter_api_key in Configuration"
+  exit 1
+fi
 
 # --- Provider snippet writers (stdout is a full provider object JSON) ---
 glm_provider_json() {
@@ -80,61 +89,162 @@ minimax_provider_json() {
 EOF
 }
 
-# --- Seed models.json on first ever start ---
-if [ ! -f "${MODELS_JSON}" ]; then
-  bashio::log.info "Bootstrapping ${MODELS_JSON} with GLM provider"
-  printf '{"providers":{"glm":%s}}' "$(glm_provider_json)" > "${MODELS_JSON}"
-fi
+openai_provider_json() {
+  cat <<'EOF'
+{
+  "baseUrl": "https://api.openai.com/v1",
+  "api": "openai-completions",
+  "apiKey": "$OPENAI_API_KEY",
+  "models": [
+    {
+      "id": "gpt-4o",
+      "name": "GPT-4o",
+      "reasoning": false,
+      "input": ["text", "image"],
+      "contextWindow": 128000,
+      "maxTokens": 16384,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    },
+    {
+      "id": "gpt-4o-mini",
+      "name": "GPT-4o mini",
+      "reasoning": false,
+      "input": ["text", "image"],
+      "contextWindow": 128000,
+      "maxTokens": 16384,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    }
+  ]
+}
+EOF
+}
 
-# --- Idempotently ensure MiniMax provider exists when the key is set. ---
-# User edits to models.json survive: we only add if the "minimax" key is
-# missing. If the user has renamed / removed it deliberately, we honor that.
-if [ -n "${MINIMAX_API_KEY}" ] && [ "${MINIMAX_API_KEY}" != "null" ]; then
-  if ! jq -e '.providers.minimax' "${MODELS_JSON}" > /dev/null 2>&1; then
-    bashio::log.info "Adding minimax provider (MiniMax-M3, openai-completions, thinkingFormat=deepseek)"
-    tmp="$(mktemp)"
-    jq --argjson mm "$(minimax_provider_json)" \
-       '.providers.minimax = $mm' "${MODELS_JSON}" > "${tmp}"
-    mv "${tmp}" "${MODELS_JSON}"
+openrouter_provider_json() {
+  cat <<'EOF'
+{
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "api": "openai-completions",
+  "apiKey": "$OPENROUTER_API_KEY",
+  "models": [
+    {
+      "id": "anthropic/claude-sonnet-4",
+      "name": "Claude Sonnet 4 (via OR)",
+      "reasoning": true,
+      "input": ["text", "image"],
+      "contextWindow": 200000,
+      "maxTokens": 16384,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    },
+    {
+      "id": "openai/gpt-4o",
+      "name": "GPT-4o (via OR)",
+      "reasoning": false,
+      "input": ["text", "image"],
+      "contextWindow": 128000,
+      "maxTokens": 16384,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    },
+    {
+      "id": "deepseek/deepseek-chat",
+      "name": "DeepSeek Chat (via OR)",
+      "reasoning": false,
+      "input": ["text"],
+      "contextWindow": 128000,
+      "maxTokens": 8192,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    },
+    {
+      "id": "meta-llama/llama-3.3-70b-instruct",
+      "name": "Llama 3.3 70B (via OR)",
+      "reasoning": false,
+      "input": ["text"],
+      "contextWindow": 131072,
+      "maxTokens": 16384,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    }
+  ]
+}
+EOF
+}
+
+# --- Seed models.json on first ever start ---
+# Prefer GLM if set (backwards compat with v0.1.0+ installs); otherwise pick
+# whichever provider the user configured first from the priority list. User
+# edits to models.json survive across restarts.
+if [ ! -f "${MODELS_JSON}" ]; then
+  if [ -n "${GLM_API_KEY}" ]; then
+    bashio::log.info "Bootstrapping ${MODELS_JSON} with GLM provider"
+    printf '{"providers":{"glm":%s}}' "$(glm_provider_json)" > "${MODELS_JSON}"
+  elif [ -n "${OPENAI_API_KEY}" ]; then
+    bashio::log.info "Bootstrapping ${MODELS_JSON} with OpenAI provider"
+    printf '{"providers":{"openai":%s}}' "$(openai_provider_json)" > "${MODELS_JSON}"
+  elif [ -n "${OPENROUTER_API_KEY}" ]; then
+    bashio::log.info "Bootstrapping ${MODELS_JSON} with OpenRouter provider"
+    printf '{"providers":{"openrouter":%s}}' "$(openrouter_provider_json)" > "${MODELS_JSON}"
+  elif [ -n "${MINIMAX_API_KEY}" ]; then
+    bashio::log.info "Bootstrapping ${MODELS_JSON} with MiniMax provider"
+    printf '{"providers":{"minimax":%s}}' "$(minimax_provider_json)" > "${MODELS_JSON}"
   fi
 fi
 
-# --- Provider startup self-check ---
-# Curl GLM once with max_tokens=1. Non-fatal — a bad key shouldn't prevent
-# the UI from booting (user needs to open Configuration to fix it), but
-# without this the failure was silent and only visible after clicking Send.
-bashio::log.info "Checking GLM provider reachability..."
-GLM_CODE="$(curl -sSL --max-time 10 -o /dev/null -w '%{http_code}' \
-  -X POST \
-  -H "Authorization: Bearer ${GLM_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"glm-4.6","messages":[{"role":"user","content":"1"}],"max_tokens":1}' \
-  https://open.bigmodel.cn/api/paas/v4/chat/completions 2>/dev/null || echo 000)"
-case "${GLM_CODE}" in
-  200)
-    bashio::log.info "GLM provider OK (HTTP ${GLM_CODE})"
-    ;;
-  401|403)
-    bashio::log.warning "GLM auth failed (HTTP ${GLM_CODE}) — fix 'api_key' in Configuration tab"
-    ;;
-  000)
-    bashio::log.warning "GLM unreachable — check network / DNS from container"
-    ;;
-  *)
-    bashio::log.warning "GLM returned unexpected HTTP ${GLM_CODE} — chat may fail until fixed"
-    ;;
-esac
+# --- Idempotently add every configured provider that's missing ---
+# User edits survive: we only add if the key is missing from the file. If
+# they've renamed / removed a provider deliberately, we honor that.
+maybe_add_provider() {
+  local key="$1" name="$2" writer="$3"
+  [ -z "${key}" ] && return 0
+  if jq -e ".providers.${name}" "${MODELS_JSON}" > /dev/null 2>&1; then
+    return 0
+  fi
+  bashio::log.info "Adding ${name} provider to models.json"
+  local tmp
+  tmp="$(mktemp)"
+  jq --argjson p "$(${writer})" ".providers.${name} = \$p" "${MODELS_JSON}" > "${tmp}"
+  mv "${tmp}" "${MODELS_JSON}"
+}
+
+maybe_add_provider "${MINIMAX_API_KEY}"    "minimax"    "minimax_provider_json"
+maybe_add_provider "${OPENAI_API_KEY}"     "openai"     "openai_provider_json"
+maybe_add_provider "${OPENROUTER_API_KEY}" "openrouter" "openrouter_provider_json"
+
+# --- Per-provider startup self-check ---
+# Cheap curl each configured provider once. Non-fatal — the UI should always
+# boot so the user can fix bad keys. 401/403 = key wrong, 402/429 = auth OK
+# but out of credits or rate-limited (chat may still work briefly).
+check_provider() {
+  local name="$1" url="$2" key="$3" model="$4"
+  [ -z "${key}" ] && return 0
+  bashio::log.info "Checking ${name} provider reachability..."
+  local code
+  code=$(curl -sSL --max-time 10 -o /dev/null -w '%{http_code}' \
+    -X POST -H "Authorization: Bearer ${key}" \
+    -H "Content-Type: application/json" \
+    -d "{\"model\":\"${model}\",\"messages\":[{\"role\":\"user\",\"content\":\"1\"}],\"max_tokens\":1}" \
+    "${url}" 2>/dev/null || echo 000)
+  case "${code}" in
+    200)         bashio::log.info    "${name} provider OK (HTTP 200)" ;;
+    401|403)     bashio::log.warning "${name} auth failed (HTTP ${code}) — fix key in Configuration tab" ;;
+    402|429)     bashio::log.warning "${name} auth OK but limited (HTTP ${code}) — out of credits / rate-limited" ;;
+    000)         bashio::log.warning "${name} unreachable — network / DNS issue" ;;
+    *)           bashio::log.warning "${name} returned HTTP ${code} — chat may fail until fixed" ;;
+  esac
+}
+
+check_provider "GLM"        "https://open.bigmodel.cn/api/paas/v4/chat/completions" "${GLM_API_KEY}"        "glm-4.6"
+check_provider "MiniMax"    "https://api.minimax.io/v1/chat/completions"            "${MINIMAX_API_KEY}"    "MiniMax-M3"
+check_provider "OpenAI"     "https://api.openai.com/v1/chat/completions"            "${OPENAI_API_KEY}"     "gpt-4o-mini"
+check_provider "OpenRouter" "https://openrouter.ai/api/v1/chat/completions"         "${OPENROUTER_API_KEY}" "openai/gpt-4o-mini"
 
 # --- Runtime env for pi-web ---
 export GLM_API_KEY
 export MINIMAX_API_KEY
+export OPENAI_API_KEY
+export OPENROUTER_API_KEY
 export PI_CODING_AGENT_DIR="${DATA_DIR}"
 export PI_WEB_HOSTNAME="0.0.0.0"
 export PI_WEB_NO_OPEN=1
 export PORT=30141
 
-# pi-web auto-accepts IP literals and loopback names. Only override if the
-# user browses via a custom hostname behind a reverse proxy.
 if [ -n "${EXTRA_ALLOWED_HOSTS}" ] && [ "${EXTRA_ALLOWED_HOSTS}" != "null" ]; then
   export PI_WEB_ALLOWED_HOSTS="${EXTRA_ALLOWED_HOSTS}"
   bashio::log.info "PI_WEB_ALLOWED_HOSTS=${PI_WEB_ALLOWED_HOSTS}"

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0
+
+- Broaden the built-in provider set from GLM+MiniMax to **GLM + MiniMax + OpenAI + OpenRouter**, so the addon isn't stuck on providers that require topping up a Chinese-side account. Real-world driver: the shipped GLM key hit `code 1113 余额不足` (out of credits) and MiniMax `1008 insufficient_balance` on the QA account; OpenAI + OpenRouter both returned 200 with the same self-check curl, so having them as first-class options removes the "install → chat 500s → open .jsonl → discover it's a credit issue" trap for new users.
+  - New add-on options `openai_api_key` (`password?`) and `openrouter_api_key` (`password?`), both optional.
+  - `api_key` (GLM) is now **optional** too — a hard runtime check enforces "at least one of the four must be set", failing fast on boot with a fatal log line so misconfiguration is obvious rather than showing an empty model dropdown.
+  - `models.json` first-boot seed picks whichever provider the user configured first from the priority list `GLM → OpenAI → OpenRouter → MiniMax`; any additional providers whose keys are set get merged in via `jq` on subsequent boots, mirroring the idempotent additive pattern used for MiniMax since v0.4.0. Deleting a provider from `models.json` will not resurrect it — user edits win.
+  - OpenRouter seed ships a curated 4-model set: `anthropic/claude-sonnet-4`, `openai/gpt-4o`, `deepseek/deepseek-chat`, `meta-llama/llama-3.3-70b-instruct` (covers the four common quality/speed tiers). OpenAI seed ships `gpt-4o` + `gpt-4o-mini`.
+- Extend the v0.8.0 startup self-check to run **once per configured provider** and log the outcome per line, so a mixed-provider install (e.g., GLM out of credits + OpenAI healthy) shows both states in the Logs tab. Also add a new `HTTP 402|429` branch that reads "auth OK but limited — out of credits / rate-limited" — GLM's `1113` returns HTTP 429, MiniMax's `1008` returns HTTP 402; both used to fall through to a generic "unexpected HTTP N" warning that misdiagnosed the failure as a code bug when it's actually a billing issue.
+
 ## 0.8.0
 
 - Fix the three latent operational gaps found by the browser + backend QA round on v0.7.3 (chat plumbing was correct but three papercuts made the failure modes look opaque to a new user):
