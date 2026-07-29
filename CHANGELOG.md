@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Fix the follow-on `403 "Untrusted API request"` bug where the project picker, Skills, Plugins, Models, and File-index panels all failed to load even though `/api/models-config` + `/api/sessions` returned 200. Root cause: pi-web's `isApiRequestAllowed()` (upstream `lib/request-security.ts`) checks two things on **every** `/api/*` request — (1) the `Host` header must be a loopback name / IP literal / entry in `PI_WEB_ALLOWED_HOSTS`, and (2) if an `Origin` header is present it must exactly equal `${protocol}://${host}` of the request. Under HA Ingress the browser hits `https://<HA-host>:8123/api/hassio_ingress/<token>/...`, so the forwarded `Host` was `homeassistant.local` (or the user's LAN IP / duckdns hostname) and forwarded `Origin` was `https://homeassistant.local` — neither matched pi-web's rules, so every auth-gated route returned 403.
+- Fix is **two `proxy_set_header` lines in nginx**: rewrite `Host` to `localhost` (which pi-web treats as trusted unconditionally via `isLoopbackHostname`) and set `Origin` to `""` (which nginx interprets as "drop the header", satisfying the "no Origin = pass" branch of the check). No user configuration required — `extra_allowed_hosts` remains available but is no longer needed for the common case.
+- Why not just document `extra_allowed_hosts` instead? Users don't always know their HA hostname (`homeassistant.local`, LAN IP, `<duckdns>.duckdns.org`, Nabu Casa remote URL — all different) and would have to add each one. Host rewriting works transparently regardless of how the user reaches HA.
+
 ## 0.5.0
 
 - Fix the "everything 404" bug users hit as soon as they tried to chat or open the Skills panel. pi-web's client-side JS calls **over 40 distinct `/api/*` routes** on absolute paths (`/api/sessions`, `/api/skills`, `/api/agent/*`, `/api/auth/*`, `/api/files/*`, `/api/git/*`, `/api/plugins`, `/api/models*`, `/api/worktrees`, `/api/cwd/*`, `/api/file-index`, `/api/project-trust`, ...) plus 9 `EventSource` streams for chat/agent-events. Under HA Ingress the browser resolved those against `<HA-host>/api/...` — hit HA Core — 404. v0.3.0's sub_filter only handled `/_next/*` and `/favicon*`, not `/api/*`.
