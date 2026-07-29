@@ -15,14 +15,15 @@ EXTRA_ALLOWED_HOSTS="$(bashio::config 'extra_allowed_hosts' '')"
 # takes effect on restart without rewriting this file.
 MODELS_JSON="${DATA_DIR}/models.json"
 if [ ! -f "${MODELS_JSON}" ]; then
-  bashio::log.info "Bootstrapping ${MODELS_JSON} with GLM (anthropic-messages) provider"
+  bashio::log.info "Bootstrapping ${MODELS_JSON} with GLM (openai-completions, thinkingFormat=zai)"
   cat > "${MODELS_JSON}" <<'EOF'
 {
   "providers": {
     "glm": {
-      "baseUrl": "https://open.bigmodel.cn/api/anthropic",
-      "api": "anthropic-messages",
+      "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+      "api": "openai-completions",
       "apiKey": "$GLM_API_KEY",
+      "thinkingFormat": "zai",
       "models": [
         {
           "id": "glm-4.6",

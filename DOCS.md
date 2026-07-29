@@ -2,7 +2,7 @@
 
 ## What it is
 
-A single Home Assistant Supervisor add-on that installs [`@agegr/pi-web`](https://github.com/agegr/pi-web) — a browser workspace for the [`pi`](https://github.com/earendil-works/pi) coding agent — pre-configured to route inference through WoowTech's [GLM (智譜清言)](https://open.bigmodel.cn) Anthropic-compatible endpoint.
+A single Home Assistant Supervisor add-on that installs [`@agegr/pi-web`](https://github.com/agegr/pi-web) — a browser workspace for the [`pi`](https://github.com/earendil-works/pi) coding agent — pre-configured to route inference through WoowTech's [GLM (智譜清言)](https://open.bigmodel.cn) OpenAI-compatible endpoint with `thinkingFormat: "zai"` so GLM-4.6 reasoning chunks surface as pi's thinking tokens.
 
 pi-web imports `@earendil-works/pi-coding-agent` as an in-process SDK, so there is no separate agent daemon — one process handles both UI and inference.
 
@@ -15,9 +15,9 @@ pi-web imports `@earendil-works/pi-coding-agent` as an in-process SDK, so there 
 
 ## First-run bootstrap
 
-On first start, the add-on writes `/data/pi-agent/models.json` containing one provider (`glm`) that points at `https://open.bigmodel.cn/api/anthropic` and one model (`glm-4.6`). It references the API key as `$GLM_API_KEY`, which pi resolves at request time from the environment — so rotating the key via the add-on UI takes effect on restart without editing files.
+On first start, the add-on writes `/data/pi-agent/models.json` containing one provider (`glm`) that points at `https://open.bigmodel.cn/api/paas/v4` via `api: openai-completions` with `thinkingFormat: "zai"`, and one model (`glm-4.6`). It references the API key as `$GLM_API_KEY`, which pi resolves at request time from the environment — so rotating the key via the add-on UI takes effect on restart without editing files.
 
-To add or override models, edit them in pi-web's **Models** panel or edit `/data/pi-agent/models.json` directly (via the HA File Editor add-on pointed at `/addon_configs/…` or `docker exec`). Subsequent restarts do not touch the file if it already exists.
+To add or override models, edit them in pi-web's **Models** panel or edit `/data/pi-agent/models.json` directly (via the HA File Editor add-on pointed at `/addon_configs/…` or `docker exec`). Subsequent restarts **do not touch** the file if it already exists — your edits persist.
 
 ## Accessing the UI
 

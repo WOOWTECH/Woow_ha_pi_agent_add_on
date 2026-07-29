@@ -22,10 +22,19 @@ panel_iframe:
     require_admin: true
 ```
 
-See [`woow_ha_pi_agent/DOCS.md`](woow_ha_pi_agent/DOCS.md) for full usage notes.
+See [`DOCS.md`](DOCS.md) for full usage notes and troubleshooting.
 
-## Add-ons in this repository
+## What's inside
 
-| Add-on | Description |
-|---|---|
-| [Woow HA Pi Agent](woow_ha_pi_agent/) | Pi coding agent + pi-web UI, GLM-backed |
+- **Provider**: WoowTech GLM (`glm-4.6`) via OpenAI-compat endpoint with `thinkingFormat: "zai"`, seeded once at first start
+- **UI**: pi-web on TCP `30141` (no application-level auth — trust the LAN)
+- **State**: sessions + `models.json` under `/data/pi-agent/`, backed up by HA snapshots
+- **Rotate the GLM API key**: change it in the add-on Configuration tab and restart. `models.json` is not overwritten — the key is resolved from `$GLM_API_KEY` at request time.
+- **Add / override models**: edit them in pi-web's **Models** panel or `/data/pi-agent/models.json` directly. Restarts do not touch existing config.
+
+## Images
+
+Multi-arch images are published to GHCR by [`.github/workflows/build.yml`](.github/workflows/build.yml):
+
+- `ghcr.io/woowtech/woow-ha-pi-agent-amd64:<version>`
+- `ghcr.io/woowtech/woow-ha-pi-agent-aarch64:<version>`
