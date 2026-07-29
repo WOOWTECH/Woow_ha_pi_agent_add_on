@@ -3,46 +3,81 @@ set -e
 
 DATA_DIR=/data/pi-agent
 mkdir -p "${DATA_DIR}/sessions"
+MODELS_JSON="${DATA_DIR}/models.json"
 
 # --- Config from HA UI (options.json) ---
 bashio::config.require 'api_key'
 GLM_API_KEY="$(bashio::config 'api_key')"
-
+MINIMAX_API_KEY="$(bashio::config 'minimax_api_key' '')"
 EXTRA_ALLOWED_HOSTS="$(bashio::config 'extra_allowed_hosts' '')"
 
-# --- Seed models.json only if user has never created one via the UI ---
-# pi resolves $GLM_API_KEY at request time, so rotating the add-on option
-# takes effect on restart without rewriting this file.
-MODELS_JSON="${DATA_DIR}/models.json"
-if [ ! -f "${MODELS_JSON}" ]; then
-  bashio::log.info "Bootstrapping ${MODELS_JSON} with GLM (openai-completions, thinkingFormat=zai)"
-  cat > "${MODELS_JSON}" <<'EOF'
+# --- Provider snippet writers (stdout is a full provider object JSON) ---
+glm_provider_json() {
+  cat <<'EOF'
 {
-  "providers": {
-    "glm": {
-      "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
-      "api": "openai-completions",
-      "apiKey": "$GLM_API_KEY",
-      "thinkingFormat": "zai",
-      "models": [
-        {
-          "id": "glm-4.6",
-          "name": "GLM-4.6",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 200000,
-          "maxTokens": 16384,
-          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-        }
-      ]
+  "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+  "api": "openai-completions",
+  "apiKey": "$GLM_API_KEY",
+  "thinkingFormat": "zai",
+  "models": [
+    {
+      "id": "glm-4.6",
+      "name": "GLM-4.6",
+      "reasoning": true,
+      "input": ["text"],
+      "contextWindow": 200000,
+      "maxTokens": 16384,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
     }
-  }
+  ]
 }
 EOF
+}
+
+minimax_provider_json() {
+  cat <<'EOF'
+{
+  "baseUrl": "https://api.minimax.io/v1",
+  "api": "openai-completions",
+  "apiKey": "$MINIMAX_API_KEY",
+  "thinkingFormat": "deepseek",
+  "models": [
+    {
+      "id": "MiniMax-M3",
+      "name": "MiniMax M3",
+      "reasoning": true,
+      "input": ["text"],
+      "contextWindow": 200000,
+      "maxTokens": 16384,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    }
+  ]
+}
+EOF
+}
+
+# --- Seed models.json on first ever start ---
+if [ ! -f "${MODELS_JSON}" ]; then
+  bashio::log.info "Bootstrapping ${MODELS_JSON} with GLM provider"
+  printf '{"providers":{"glm":%s}}' "$(glm_provider_json)" > "${MODELS_JSON}"
+fi
+
+# --- Idempotently ensure MiniMax provider exists when the key is set. ---
+# User edits to models.json survive: we only add if the "minimax" key is
+# missing. If the user has renamed / removed it deliberately, we honor that.
+if [ -n "${MINIMAX_API_KEY}" ] && [ "${MINIMAX_API_KEY}" != "null" ]; then
+  if ! jq -e '.providers.minimax' "${MODELS_JSON}" > /dev/null 2>&1; then
+    bashio::log.info "Adding minimax provider (MiniMax-M3, openai-completions, thinkingFormat=deepseek)"
+    tmp="$(mktemp)"
+    jq --argjson mm "$(minimax_provider_json)" \
+       '.providers.minimax = $mm' "${MODELS_JSON}" > "${tmp}"
+    mv "${tmp}" "${MODELS_JSON}"
+  fi
 fi
 
 # --- Runtime env for pi-web ---
 export GLM_API_KEY
+export MINIMAX_API_KEY
 export PI_CODING_AGENT_DIR="${DATA_DIR}"
 export PI_WEB_HOSTNAME="0.0.0.0"
 export PI_WEB_NO_OPEN=1

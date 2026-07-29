@@ -1,7 +1,7 @@
 name: Woow HA Pi Agent
-version: "0.3.0"
+version: "0.4.0"
 slug: woow_ha_pi_agent
-description: pi-web (agegr/pi-web) + pi coding agent SDK (earendil-works/pi), pre-wired to WoowTech GLM (智譜清言)
+description: pi-web (agegr/pi-web) + pi coding agent SDK (earendil-works/pi), pre-wired to WoowTech GLM (智譜清言) and MiniMax M3
 url: https://github.com/WOOWTECH/Woow_ha_pi_agent_add_on
 hassio_api: true
 arch:
@@ -25,8 +25,10 @@ panel_title: Pi Agent
 panel_admin: true
 options:
   api_key: ""
+  minimax_api_key: ""
   extra_allowed_hosts: ""
 schema:
   api_key: password
+  minimax_api_key: password?
   extra_allowed_hosts: str?
 image: ghcr.io/woowtech/woow-ha-pi-agent-{arch}

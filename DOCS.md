@@ -2,7 +2,10 @@
 
 ## What it is
 
-A single Home Assistant Supervisor add-on that installs [`@agegr/pi-web`](https://github.com/agegr/pi-web) — a browser workspace for the [`pi`](https://github.com/earendil-works/pi) coding agent — pre-configured to route inference through WoowTech's [GLM (智譜清言)](https://open.bigmodel.cn) OpenAI-compatible endpoint with `thinkingFormat: "zai"` so GLM-4.6 reasoning chunks surface as pi's thinking tokens.
+A single Home Assistant Supervisor add-on that installs [`@agegr/pi-web`](https://github.com/agegr/pi-web) — a browser workspace for the [`pi`](https://github.com/earendil-works/pi) coding agent — pre-configured with two reasoning providers so a team can compare them side-by-side:
+
+- **GLM-4.6** ([智譜清言](https://open.bigmodel.cn)) via `openai-completions` + `thinkingFormat: "zai"`
+- **MiniMax M3** (`https://api.minimax.io`) via `openai-completions` + `thinkingFormat: "deepseek"` — enabled only when the `minimax_api_key` option is set
 
 pi-web imports `@earendil-works/pi-coding-agent` as an in-process SDK, so there is no separate agent daemon — one process handles both UI and inference.
 
@@ -11,13 +14,14 @@ pi-web imports `@earendil-works/pi-coding-agent` as an in-process SDK, so there 
 | Option | Required | Notes |
 |---|---|---|
 | `api_key` | Yes | Your GLM API key from `open.bigmodel.cn`. Stored by HA as a secret — never logged in normal operation. |
+| `minimax_api_key` | No | Your MiniMax API key from `api.minimax.io`. When set, adds the `minimax` provider + `MiniMax-M3` model to `models.json` on next start (idempotent — only added if absent). |
 | `extra_allowed_hosts` | No | Comma-separated extra `Host:` values pi-web will accept. Only needed if you front the add-on with a reverse proxy using a non-IP hostname. IP literals and loopback names are auto-accepted. |
 
 ## First-run bootstrap
 
-On first start, the add-on writes `/data/pi-agent/models.json` containing one provider (`glm`) that points at `https://open.bigmodel.cn/api/paas/v4` via `api: openai-completions` with `thinkingFormat: "zai"`, and one model (`glm-4.6`). It references the API key as `$GLM_API_KEY`, which pi resolves at request time from the environment — so rotating the key via the add-on UI takes effect on restart without editing files.
+On first start, the add-on writes `/data/pi-agent/models.json` seeded with the GLM provider (referencing `$GLM_API_KEY`). If `minimax_api_key` is set, a `minimax` provider entry (referencing `$MINIMAX_API_KEY`) is merged in via `jq`. Both keys are resolved from the environment at request time — rotating a key in the Configuration tab takes effect on restart without editing files.
 
-To add or override models, edit them in pi-web's **Models** panel or edit `/data/pi-agent/models.json` directly (via the HA File Editor add-on pointed at `/addon_configs/…` or `docker exec`). Subsequent restarts **do not touch** the file if it already exists — your edits persist.
+On subsequent starts, the bootstrap **only adds missing providers** and never overwrites existing entries. If you delete the `minimax` provider via pi-web's Models panel, it stays deleted; only clearing the entire file re-triggers the full seed. Same for any custom models you add.
 
 ## Accessing the UI
 
