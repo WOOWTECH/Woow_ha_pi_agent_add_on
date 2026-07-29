@@ -1,5 +1,5 @@
 name: Woow HA Pi Agent
-version: "0.7.3"
+version: "0.8.0"
 slug: woow_ha_pi_agent
 description: pi-web (agegr/pi-web) + pi coding agent SDK (earendil-works/pi), pre-wired to WoowTech GLM (智譜清言) and MiniMax M3
 url: https://github.com/WOOWTECH/Woow_ha_pi_agent_add_on
@@ -20,6 +20,7 @@ backup_exclude:
   - "**/sessions/*.jsonl.tmp"
 ingress: true
 ingress_port: 30142
+ingress_stream: true
 panel_icon: mdi:robot
 panel_title: Pi Agent
 panel_admin: true

@@ -1,9 +1,33 @@
 #!/command/with-contenv bashio
 set -e
 
+# Redirect stderr into stdout so both streams reach the s6 log service and
+# show up together in the addon Logs tab. Otherwise pi-web crash traces and
+# any node warnings disappear silently.
+exec 2>&1
+
 DATA_DIR=/data/pi-agent
 mkdir -p "${DATA_DIR}/sessions"
 MODELS_JSON="${DATA_DIR}/models.json"
+
+# --- Auto-enable sidebar panel ---
+# config.yaml's panel_title/panel_icon/panel_admin only supply *defaults*
+# for the ingress_panel Supervisor state; the sidebar entry only sticks
+# after "Show in sidebar" toggles ingress_panel=true. We flip it via the
+# Supervisor API on every boot so a fresh install just works without the
+# user hunting for the toggle on the addon Info page.
+if [ -n "${SUPERVISOR_TOKEN}" ]; then
+  if curl -sSL --max-time 5 -o /dev/null -w '%{http_code}' \
+      -X POST \
+      -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d '{"ingress_panel": true}' \
+      http://supervisor/addons/self/options 2>/dev/null | grep -q '^200$'; then
+    bashio::log.info "Sidebar panel enabled via Supervisor API"
+  else
+    bashio::log.warning "Could not auto-enable sidebar — toggle 'Show in sidebar' manually if it's missing"
+  fi
+fi
 
 # --- Config from HA UI (options.json) ---
 bashio::config.require 'api_key'
@@ -74,6 +98,32 @@ if [ -n "${MINIMAX_API_KEY}" ] && [ "${MINIMAX_API_KEY}" != "null" ]; then
     mv "${tmp}" "${MODELS_JSON}"
   fi
 fi
+
+# --- Provider startup self-check ---
+# Curl GLM once with max_tokens=1. Non-fatal — a bad key shouldn't prevent
+# the UI from booting (user needs to open Configuration to fix it), but
+# without this the failure was silent and only visible after clicking Send.
+bashio::log.info "Checking GLM provider reachability..."
+GLM_CODE="$(curl -sSL --max-time 10 -o /dev/null -w '%{http_code}' \
+  -X POST \
+  -H "Authorization: Bearer ${GLM_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"glm-4.6","messages":[{"role":"user","content":"1"}],"max_tokens":1}' \
+  https://open.bigmodel.cn/api/paas/v4/chat/completions 2>/dev/null || echo 000)"
+case "${GLM_CODE}" in
+  200)
+    bashio::log.info "GLM provider OK (HTTP ${GLM_CODE})"
+    ;;
+  401|403)
+    bashio::log.warning "GLM auth failed (HTTP ${GLM_CODE}) — fix 'api_key' in Configuration tab"
+    ;;
+  000)
+    bashio::log.warning "GLM unreachable — check network / DNS from container"
+    ;;
+  *)
+    bashio::log.warning "GLM returned unexpected HTTP ${GLM_CODE} — chat may fail until fixed"
+    ;;
+esac
 
 # --- Runtime env for pi-web ---
 export GLM_API_KEY

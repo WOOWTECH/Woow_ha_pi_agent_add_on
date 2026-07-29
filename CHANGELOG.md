@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- Fix the three latent operational gaps found by the browser + backend QA round on v0.7.3 (chat plumbing was correct but three papercuts made the failure modes look opaque to a new user):
+  - **Sidebar auto-enable.** `panel_title` / `panel_icon` / `panel_admin` in `config.yaml` only supply *defaults* for the Supervisor's `ingress_panel` state — the actual sidebar entry only sticks after "Show in sidebar" is toggled on, which flips `ingress_panel=true`. Users were installing the addon, expecting the "Pi Agent" sidebar item, not seeing it, and giving up. Fix: on every boot the `pi-web` service posts `{"ingress_panel": true}` to `http://supervisor/addons/self/options` using `$SUPERVISOR_TOKEN`, so a fresh install just shows up in the sidebar without hunting for the toggle. Requires `hassio_api: true` (already set since v0.7.0).
+  - **Provider startup self-check.** A bad `api_key` produced a silent failure — pi-web booted fine, UI came up, but every Send returned `401 "身份验证失败。"` from GLM and the user had to open the session `.jsonl` to diagnose. Fix: the run script now curls GLM's `/chat/completions` with `max_tokens=1` before `exec pi-web`, and logs a bashio warning on 401/403/timeout so the failure is visible in the addon Logs tab immediately. Kept non-fatal on purpose — the UI must still boot so the user can open Configuration and fix the key.
+  - **stderr → s6 log.** pi-web writes some diagnostics to stderr; the s6 log service only captured stdout, so anything that crashed the node process left no trace in the addon Logs tab. Fix: `exec 2>&1` at the top of the run script merges both streams.
+- Also add `ingress_stream: true` to `config.yaml` — HA Supervisor otherwise applies default 60s buffering to the ingress connection, which times out the chat SSE stream mid-generation on long responses. With the flag the Supervisor holds the connection open for the full response and pi-web's EventSource stays connected past the first minute.
+
 ## 0.7.3
 
 - Third and final piece of the Next.js RSC-prefetch escape saga. Even with v0.7.2's `S()` normalization, `router.push('/')` was still landing on HA Core (`GET https://<HA-host>/?_rsc=<token>` → 200 dashboard HTML → Next.js router did a hard `location.href` fallback into HA's `/dashboard-home/overview`, blanking the iframe). Root cause: Next.js's `fetchServerResponse()` constructs the RSC URL via `new URL(pathname, location.origin)` and calls `fetch(urlObject, ...)` — passing a **URL object**, not a string and not a `Request`. The shim's fetch wrapper only had branches for `typeof i === "string"` and `i.url` (Request), so URL objects fell through untouched.
