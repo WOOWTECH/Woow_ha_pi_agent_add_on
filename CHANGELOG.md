@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.3
+
+- Third and final piece of the Next.js RSC-prefetch escape saga. Even with v0.7.2's `S()` normalization, `router.push('/')` was still landing on HA Core (`GET https://<HA-host>/?_rsc=<token>` → 200 dashboard HTML → Next.js router did a hard `location.href` fallback into HA's `/dashboard-home/overview`, blanking the iframe). Root cause: Next.js's `fetchServerResponse()` constructs the RSC URL via `new URL(pathname, location.origin)` and calls `fetch(urlObject, ...)` — passing a **URL object**, not a string and not a `Request`. The shim's fetch wrapper only had branches for `typeof i === "string"` and `i.url` (Request), so URL objects fell through untouched.
+- Fix adds an explicit `i instanceof URL` branch that reads `.href` through `S()` (same normalizer as before) and rewrites to the ingress-prefixed string form (`fetch` accepts either string or URL as its first arg, so a string here is fine). All three input shapes — string / URL / Request — are now normalized through the same `S() → T()` pipeline.
+
 ## 0.7.2
 
 - Fix the follow-on regression uncovered while validating v0.7.1 in the browser: Next.js's App Router prefetch was still landing on HA Core (`GET https://<HA-host>/?_rsc=<token>` → 200 dashboard HTML) even though the shim's `T()` predicate contained an `_rsc=` branch. Root cause: Next.js constructs the RSC probe URL with `new URL(href, location.href)` and passes the resulting **absolute-URL string** to `fetch(...)`. The shim's guard was `u.charAt(0) === "/"` — an absolute URL starts with `h` (as in `https://...`), so `T()` returned `false` and the fetch skipped the prefix.
