@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- Fix the "everything 404" bug users hit as soon as they tried to chat or open the Skills panel. pi-web's client-side JS calls **over 40 distinct `/api/*` routes** on absolute paths (`/api/sessions`, `/api/skills`, `/api/agent/*`, `/api/auth/*`, `/api/files/*`, `/api/git/*`, `/api/plugins`, `/api/models*`, `/api/worktrees`, `/api/cwd/*`, `/api/file-index`, `/api/project-trust`, ...) plus 9 `EventSource` streams for chat/agent-events. Under HA Ingress the browser resolved those against `<HA-host>/api/...` — hit HA Core — 404. v0.3.0's sub_filter only handled `/_next/*` and `/favicon*`, not `/api/*`.
+- Fix is a **fetch / EventSource / XMLHttpRequest shim injected at `</head>`** by nginx sub_filter. Shim reads the ingress prefix from `window.__INGRESS_PATH__` (nginx substitutes `$http_x_ingress_path` at request time) and prepends it to any absolute path starting with `/api/`, `/_next/`, or `/favicon` — but explicitly skips paths already under `/api/hassio_ingress/` so we don't double-prefix the one existing ingress URL that leaks into the JS bundle.
+- Chose the shim over rewriting the bundle because a naive `"/api/` → `"$prefix/api/` sub_filter would clobber that embedded `/api/hassio_ingress/AeZVR…/_next/…` string. Shim is future-proof: any new pi-web `/api/*` route added upstream Just Works, no nginx changes needed.
+
 ## 0.4.0
 
 - Add **MiniMax M3** as a second built-in provider alongside GLM-4.6 — team members can pick either model from pi-web's Models dropdown. Uses `openai-completions` at `https://api.minimax.io/v1` with `thinkingFormat: "deepseek"` so the `<think>...</think>` inline reasoning blocks surface as pi thinking tokens.
