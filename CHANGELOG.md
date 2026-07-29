@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.2
+
+- Fix the follow-on regression uncovered while validating v0.7.1 in the browser: Next.js's App Router prefetch was still landing on HA Core (`GET https://<HA-host>/?_rsc=<token>` → 200 dashboard HTML) even though the shim's `T()` predicate contained an `_rsc=` branch. Root cause: Next.js constructs the RSC probe URL with `new URL(href, location.href)` and passes the resulting **absolute-URL string** to `fetch(...)`. The shim's guard was `u.charAt(0) === "/"` — an absolute URL starts with `h` (as in `https://...`), so `T()` returned `false` and the fetch skipped the prefix.
+- Fix wraps every URL input (fetch string arg, `Request.url`, `EventSource` URL, `XMLHttpRequest.open` URL, `history.pushState/replaceState` URL) through a new `S(u)` helper that strips a leading `location.origin` before `T()` inspects it. Same-origin absolute URLs are now normalized to their path form and routed through the prefix; cross-origin absolute URLs (analytics, CDNs, external APIs — none of which pi-web actually calls today, but keeping this clean matters if upstream adds any) pass through untouched because after strip they still fail the `charAt(0) === "/"` check.
+- Also tightens the `history.pushState/replaceState` wrapper to run the same normalization so `router.push('https://<HA-host>/foo')` (unlikely from upstream, but not impossible) still lands inside the ingress prefix.
+
 ## 0.7.1
 
 - Emergency hotfix for v0.7.0's regression: every `/_next/static/**` asset returned `404` with `text/plain` MIME (browser then refuses to execute the JS chunks, the whole Pi Agent UI shows a blank iframe). Root cause was a typo in the `map` block that was supposed to whitelist-validate `X-Ingress-Path` — the source variable had been rewritten from `$http_x_ingress_path` to `$safe_ingress_path` by a stray `replace_all`, so the map became `map $safe_ingress_path $safe_ingress_path { ... }` (self-referential, never defined, always coerced to `""`). Every `sub_filter '…$safe_ingress_path/_next/…'` template then substituted with an empty prefix, leaving `href="/_next/…"` in the HTML — the browser resolved that against HA Core, got 404, and everything downstream cascaded. The XSS-hardening intent of v0.7.0 is preserved; the fix is just restoring `$http_x_ingress_path` as the map's source variable.
