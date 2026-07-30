@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0
+
+- **Video-production pipeline support**. Adds every CLI the `pitch_video` workflow needs (TTS → Playwright capture → ffmpeg segments/xfade/burn → rclone Drive push) so users can run the full 8-step pipeline inside the addon without leaving Home Assistant. Split into two persistence tiers to keep image size flat across upgrades:
+  - **Baked into image (~300MB)**: `python3` + `python3-venv`/`python3-pip`, `ffmpeg` (bundles `ffprobe` + `libass` + `libx264` + `aac`), `fonts-noto-cjk` + `fonts-noto-color-emoji` + `fontconfig` (subtitle burn under CJK/emoji scripts — nothing else covers 中/日/韓 in libass), Chromium runtime .so set (`libnss3` + `libatk-bridge2.0-0` + `libcups2` + `libxcomposite1` + `libxdamage1` + `libxrandr2` + `libgbm1` + `libpango-1.0-0` + `libcairo2` + `libasound2` + `libatspi2.0-0`), and `rclone` (current .deb from downloads.rclone.org because Debian bookworm's package is a year behind).
+  - **Downloaded to `/data/pi-agent/` on first boot (~720MB)**: Python venv (`playwright`, `edge-tts`, `pyyaml`, `mutagen`) + Chromium browser binary (`PLAYWRIGHT_BROWSERS_PATH=/data/pi-agent/playwright-cache`). Handled by a new `video-tools-init` s6-overlay oneshot with a sentinel at `/data/pi-agent/.video-tools-installed` so subsequent boots exit in <100ms. Non-fatal: pi-web starts in parallel and chat stays functional even if the download fails.
+- **Env inheritance for spawned shells**. The `pi-web/run` script now exports `PATH=/data/pi-agent/venv/bin:$PATH`, `PLAYWRIGHT_BROWSERS_PATH`, and `RCLONE_CONFIG` before `exec pi-web`, so every shell the pi coding agent spawns picks up the venv python + browser cache + rclone config without the user having to source anything. `/etc/profile.d/pi-agent.sh` mirrors the same three variables for interactive addon-Terminal shells / `docker exec` sessions.
+- **`backup_exclude` refined**. `**/playwright-cache/**` + `**/venv/**` skipped (rebuildable in <5min); `**/projects/**/clips/**` + `**/projects/**/segments/**` skipped (large intermediate video); `rclone.conf` stays inside snapshots so Google Drive tokens survive a restore.
+- **DOCS.md `Video pipeline` section**. Documents the first-run `rclone config` step, layout under `/data/pi-agent/projects/`, and how to retry if `video-tools-init` fails (clear the sentinel + restart the addon).
+
 ## 0.10.4
 
 - Silence the last remaining console error from v0.10.3. Rejecting `navigator.serviceWorker.register` still tripped pi-web's own `.catch()` handler that emits `console.error("Failed to register the Pi Web service worker:", err)` — 1 red line in the console on every load. Fix: resolve with a minimal fake `ServiceWorkerRegistration`-shaped object (`{scope:"/",installing:null,waiting:null,active:null,update()→resolve,unregister()→resolve(true),add/removeEventListener}`) so pi-web's success `.then()` runs silently. No functional change — SW still isn't actually registered — but the console is now clean.

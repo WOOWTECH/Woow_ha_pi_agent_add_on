@@ -82,6 +82,82 @@ The sidebar entry is enabled automatically on every boot via a Supervisor API PO
 
 Before v0.10.0, `pi-cwd-*` worktrees landed on the container root filesystem and vanished on every image update. `HOME` is now redirected into `/data/pi-agent/home` so the pi coding agent's default workspaces persist alongside sessions.
 
+## Video pipeline (v0.11.0+)
+
+The addon ships every CLI the `pitch_video` workflow (TTS → capture → segments → xfade → SRT → burn → verify → Drive upload) needs. Split across two layers:
+
+**Baked into the image** (survive addon restart automatically):
+
+- `python3` + venv/pip
+- `ffmpeg` / `ffprobe` (with `libass`, `libx264`, `aac`)
+- `fonts-noto-cjk`, `fonts-noto-color-emoji`, `fontconfig` — CJK + emoji subtitle burn
+- `rclone` (current .deb, not Debian's stale package)
+- Chromium runtime shared libs (`libnss3`, `libatk-bridge2.0-0`, `libcups2`, `libxcomposite1`, `libxdamage1`, `libxrandr2`, `libgbm1`, `libpango-1.0-0`, `libcairo2`, `libasound2`, `libatspi2.0-0`)
+
+**Downloaded to `/data/pi-agent/` on first boot** (persist across addon updates, ~720MB total):
+
+- `/data/pi-agent/venv/` — Python venv with `playwright`, `edge-tts`, `pyyaml`, `mutagen`
+- `/data/pi-agent/playwright-cache/` — Chromium browser binary (via `PLAYWRIGHT_BROWSERS_PATH`)
+
+Bootstrap is handled by the `video-tools-init` s6-overlay oneshot, gated by the sentinel `/data/pi-agent/.video-tools-installed`. Cold-boot install runs once (may take 3-8 min on Raspberry Pi 4 / slow networks); subsequent boots exit in <100ms.
+
+### First-run: configure rclone for Google Drive
+
+The video pipeline's `push_drive.sh` uploads via `rclone`. The addon can't run `rclone config` non-interactively (OAuth needs a browser), so the token has to be minted once by the user:
+
+```sh
+# From the addon's Terminal tab (or `docker exec -it addon_woow_ha_pi_agent bash`):
+rclone --config=/data/pi-agent/rclone/rclone.conf config
+# Follow the prompts: n (new remote) → name it e.g. WOOWTECH → drive (Google Drive)
+# → paste your client_id/secret (or use rclone's default) → autoconfig? y →
+# a browser tab opens; sign in; paste the returned token back.
+```
+
+The `rclone.conf` file is **inside** the HA snapshot backup (unlike the venv and Chromium cache which are excluded), so restoring a snapshot restores your Drive token.
+
+### Project layout
+
+Place per-video project directories under `/data/pi-agent/projects/`:
+
+```
+/data/pi-agent/projects/pitch_video/
+├── script.yaml
+├── timeline.json
+├── video/
+│   ├── tts.py
+│   ├── capture.py
+│   ├── build_segments.sh
+│   ├── concat_xfade.py
+│   ├── build_srt.py
+│   ├── build_final.sh
+│   ├── verify.py
+│   └── push_drive.sh
+├── clips/          ← Playwright output (excluded from HA snapshot)
+├── segments/       ← ffmpeg intermediate (excluded from HA snapshot)
+└── final.mp4       ← included in snapshot
+```
+
+The `pi-web/run` script exports `PATH=/data/pi-agent/venv/bin:$PATH` + `PLAYWRIGHT_BROWSERS_PATH` + `RCLONE_CONFIG` before `exec pi-web`, so any shell the pi coding agent spawns to run `python3 video/tts.py` transparently picks up the venv python, the browser cache, and the rclone config.
+
+### Retry a failed install
+
+If `video-tools-init` fails mid-download (e.g. network blip) the pi-web UI still works, but the video pipeline steps will fail. To retry:
+
+```sh
+rm /data/pi-agent/.video-tools-installed
+# Then restart the addon from the HA UI.
+```
+
+Logs from each retry show up in the addon Logs tab under the `video-tools-init` prefix.
+
+### Env variables set for you
+
+| Variable | Value | Used by |
+|---|---|---|
+| `PATH` (prefix) | `/data/pi-agent/venv/bin` | `python3`, `playwright`, `edge-tts` resolve to venv |
+| `PLAYWRIGHT_BROWSERS_PATH` | `/data/pi-agent/playwright-cache` | Playwright locates its persistent Chromium |
+| `RCLONE_CONFIG` | `/data/pi-agent/rclone/rclone.conf` | `rclone` uses the persistent OAuth token |
+
 ## Security notes
 
 - pi-web has **no application-level authentication**. Access control is delegated to Home Assistant: only HA users can hit the ingress endpoint, and the sidebar tile is gated to admins via `panel_admin: true`.

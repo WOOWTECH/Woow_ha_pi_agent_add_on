@@ -408,5 +408,18 @@ export PORT=30141
 export HOME="${DATA_DIR}/home"
 cd "${HOME}"
 
+# Video pipeline (v0.11.0). The pi coding agent spawns shell subprocesses to
+# run user commands like `python3 video/tts.py`; those subprocesses inherit
+# this env, so the venv python + Playwright browser cache + rclone conf are
+# discoverable without the user having to source anything. The `[ -x ]` guard
+# skips the PATH prepend on the very first boot when video-tools-init hasn't
+# finished creating the venv yet — pi-web still starts, chat still works, and
+# the next spawned shell (after video-tools-init exits) will pick up the venv.
+if [ -x /data/pi-agent/venv/bin/python3 ]; then
+  export PATH="/data/pi-agent/venv/bin:${PATH}"
+fi
+export PLAYWRIGHT_BROWSERS_PATH=/data/pi-agent/playwright-cache
+export RCLONE_CONFIG=/data/pi-agent/rclone/rclone.conf
+
 bashio::log.info "Starting pi-web on 0.0.0.0:30141 (data: ${PI_CODING_AGENT_DIR}, home: ${HOME})"
 exec pi-web
