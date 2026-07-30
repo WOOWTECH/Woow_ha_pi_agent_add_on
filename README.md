@@ -109,23 +109,23 @@ flowchart LR
 sequenceDiagram
     autonumber
     participant U as HA admin (browser)
-    participant W as pi-web (Skills modal)
+    participant W as pi-web Skills modal
     participant S as skills CLI 1.5.21
     participant G as git / ssh
     participant D as /data/pi-agent/skills/
-    U->>W: Paste GitHub URL / owner/repo / local path
-    W->>S: spawn `npx skills add <target>`
-    alt GitHub / owner-repo
-        S->>G: git clone (HTTPS) → simple-git
+    U->>W: Paste GitHub URL, owner-repo, or local path
+    W->>S: spawn npx skills add TARGET
+    alt GitHub or owner-repo
+        S->>G: git clone via simple-git
         G-->>S: repo tree
-        S->>G: (fallback) ssh -o BatchMode=yes if HTTPS auth fails
+        S->>G: fallback ssh -o BatchMode=yes if HTTPS auth fails
     else Local path
         S->>D: cp -R via node-tar
     end
-    S->>D: Write SKILL.md + assets under skills/<name>/
+    S->>D: Write SKILL.md and assets under skills/NAME/
     S-->>W: exit 0
-    W-->>U: Modal refreshes; skill appears in list
-    Note over W,D: Next session's system prompt picks up `<available_skills>`
+    W-->>U: Modal refreshes and skill appears in list
+    Note over W,D: Next session system prompt picks up available_skills block
 ```
 
 **Why `git` + `openssh-client` are in the base image:** the `skills` CLI shells out to `git clone` (via `simple-git`) for every repo-backed install — the Skills modal's Search button, `owner/repo` shorthand, and `skills.sh` entries pointing at a repo all take that path. Missing `git` failed 99% of installs with `spawn git ENOENT` (the exact incident that shipped v0.12.0). `openssh-client` enables the CLI's `ssh -o BatchMode=yes` retry for private repos. `gh` is intentionally omitted (20 MB+, only used for a swallowed `gh auth token` fallback).

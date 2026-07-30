@@ -108,24 +108,24 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     autonumber
-    participant U as HA 管理員（瀏覽器）
-    participant W as pi-web（Skills modal）
+    participant U as HA 管理員 瀏覽器
+    participant W as pi-web Skills modal
     participant S as skills CLI 1.5.21
-    participant G as git / ssh
+    participant G as git 或 ssh
     participant D as /data/pi-agent/skills/
-    U->>W: 貼上 GitHub URL / owner/repo / 本地路徑
-    W->>S: spawn `npx skills add <target>`
-    alt GitHub / owner-repo
-        S->>G: git clone (HTTPS) → simple-git
+    U->>W: 貼上 GitHub URL、owner-repo 或本地路徑
+    W->>S: spawn npx skills add TARGET
+    alt GitHub 或 owner-repo
+        S->>G: git clone 透過 simple-git
         G-->>S: repo 內容
-        S->>G: （fallback）HTTPS 認證失敗改走 ssh -o BatchMode=yes
+        S->>G: fallback ssh -o BatchMode=yes 若 HTTPS 認證失敗
     else 本地路徑
         S->>D: 以 node-tar 複製
     end
-    S->>D: 在 skills/<name>/ 寫入 SKILL.md 與資產
+    S->>D: 在 skills/NAME/ 寫入 SKILL.md 與資產
     S-->>W: exit 0
-    W-->>U: modal 刷新，skill 出現在清單
-    Note over W,D: 下一個 session 的 system prompt 會抓到 `<available_skills>`
+    W-->>U: modal 刷新並列出 skill
+    Note over W,D: 下一個 session 的 system prompt 會抓到 available_skills block
 ```
 
 **為什麼要在 base image 裡帶 `git` + `openssh-client`：** `skills` CLI 對每一種 repo 安裝路徑（Skills modal 的 Search 按鈕、`owner/repo` 縮寫、`skills.sh` 內指向 repo 的條目）都會透過 `simple-git` 呼叫 `git clone`。少了 `git` 會讓 99% 的安裝失敗（`spawn git ENOENT` —— 就是 v0.12.0 上線的那個事件）。`openssh-client` 讓 CLI 對私有 repo 的 `ssh -o BatchMode=yes` 重試路徑生效。`gh` 刻意不裝（20 MB+，只在被吞掉的 `gh auth token` fallback 用得到）。
