@@ -27,7 +27,14 @@ RUN apt-get update \
 
 # pi-web ships pre-built .next/ in the npm tarball; @earendil-works/pi-coding-agent
 # is a transitive dep, so no separate agent daemon is needed.
-RUN npm install -g --omit=dev @agegr/pi-web@latest \
+#
+# Pinned: upstream ships absolute-path assets and 40+ /api/* routes that the
+# ingress shim rewrites in nginx.conf. A floating `@latest` means an upstream
+# refactor of _next chunk names, RSC prefetch shape, or a new /api/* route can
+# silently regress the shim without any local code change. Bump manually after
+# validating a new upstream release doesn't break Ingress.
+ARG PI_WEB_VERSION=0.8.4
+RUN npm install -g --omit=dev "@agegr/pi-web@${PI_WEB_VERSION}" \
     && rm -rf /tmp/npm-cache
 
 COPY rootfs/ /

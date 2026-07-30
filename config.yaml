@@ -1,7 +1,7 @@
 name: Woow HA Pi Agent
-version: "0.9.1"
+version: "0.10.0"
 slug: woow_ha_pi_agent
-description: pi-web (agegr/pi-web) + pi coding agent SDK (earendil-works/pi), pre-wired to GLM, MiniMax, OpenAI, and OpenRouter (BYOK)
+description: pi-web + pi coding agent SDK, pre-wired to GLM / MiniMax / OpenAI / OpenRouter / Anthropic / DeepSeek / Groq (BYOK)
 url: https://github.com/WOOWTECH/Woow_ha_pi_agent_add_on
 hassio_api: true
 arch:
@@ -18,22 +18,29 @@ map:
 backup: cold
 backup_exclude:
   - "**/sessions/*.jsonl.tmp"
+  - "**/home/**/node_modules/**"
+  - "**/home/**/.cache/**"
 ingress: true
 ingress_port: 30142
 ingress_stream: true
 panel_icon: mdi:robot
 panel_title: Pi Agent
 panel_admin: true
+watchdog: "http://[HOST]:[PORT:30142]/api/home"
 options:
   api_key: ""
   minimax_api_key: ""
   openai_api_key: ""
   openrouter_api_key: ""
-  extra_allowed_hosts: ""
+  anthropic_api_key: ""
+  deepseek_api_key: ""
+  groq_api_key: ""
 schema:
   api_key: password?
   minimax_api_key: password?
   openai_api_key: password?
   openrouter_api_key: password?
-  extra_allowed_hosts: str?
+  anthropic_api_key: password?
+  deepseek_api_key: password?
+  groq_api_key: password?
 image: ghcr.io/woowtech/woow-ha-pi-agent-{arch}

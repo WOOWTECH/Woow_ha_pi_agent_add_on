@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.0
+
+- **Add three new BYOK providers**: Anthropic direct, DeepSeek direct, and Groq. The catalog is now 7 providers (GLM / MiniMax / OpenAI / OpenRouter / Anthropic / DeepSeek / Groq). Rationale per provider:
+  - **Anthropic direct** uses the `anthropic` API mode instead of the `openai-completions` bridge, so pi-web sees first-class thinking blocks and `cache_control` markers — the OpenRouter → Anthropic route loses both. Seeds Opus 4.7 / Sonnet 4.6 / Haiku 4.5.
+  - **DeepSeek direct** is cheaper than DeepSeek-via-OpenRouter and exposes the native `deepseek-reasoner` (R1) with thinking tokens; the OpenRouter route currently strips them.
+  - **Groq** LPU-hosted (~500 tok/s) covers the "cheap fast draft" tier — Llama 3.3 70B + Kimi K2. Useful as a scratch model while the flagship reasoner is thinking.
+- Extend the boot self-check to cover the three new providers. Anthropic needs a special code path (`x-api-key` + `anthropic-version` headers instead of `Authorization: Bearer`, and Haiku for the probe because Sonnet/Opus reject `max_tokens=1`); the other two reuse the standard OpenAI-compatible probe.
+- **Add HA Supervisor watchdog** via `watchdog: http://[HOST]:[PORT:30142]/api/home` in `config.yaml`. Supervisor probes the nginx front once per interval; a hung pi-web (crashloop, deadlocked event loop, wedged DB write) now triggers auto-restart instead of leaving the UI stuck. `/api/home` was chosen because it's the only pi-web route that a fresh install answers `200` on without a session context.
+- **Persist pi coding-agent worktrees** by redirecting `HOME=/data/pi-agent/home`. Before this, `pi-cwd-<date>/` directories landed on the ephemeral container rootfs and vanished on every image update — users on v0.7.x → v0.9.1 lost their in-flight work whenever a new tag shipped. `/data/pi-agent/` is the persistent per-addon mount already backed up by HA snapshots. `backup_exclude` now also skips `node_modules` and `.cache` under the worktree tree to keep snapshots small.
+- **Pin pi-web to `0.8.4`** in the Dockerfile (was `@latest`). The ingress shim rewrites 40+ hardcoded `/api/*` routes and the `T()` predicate assumes today's `_next` chunk shape / RSC prefetch behavior — an upstream refactor to any of those would silently regress the shim without any local code change. New pi-web releases now require a manual bump-and-verify in this repo, gated by the QA loop that produced v0.9.1.
+- **Drop the `extra_allowed_hosts` config option**. Since v0.6.0 the nginx front rewrites `Host: localhost` before proxying to pi-web, so pi-web's `isApiRequestAllowed()` guard is unconditionally satisfied and the option had zero effect. Keeping a no-op option in the schema misled users into thinking it was a knob they should configure. Removed from `config.yaml` options + schema, the run script, and DOCS.md.
+
 ## 0.9.1
 
 - Close the last set of console 404s uncovered in v0.9.0 QA: `.woff2` fonts (4×), a CSS asset served as `text/plain 404`, and `favicon.ico?<hash>` all failing to load. Root cause: after hydration, `ReactDOM.preinit()` and `next/font`'s runtime inject fresh `<link href="/_next/…">` and `<link href="/favicon.ico?…">` elements straight into the DOM — the browser fetches those assets by walking the element tree, so none of the v0.7.x fetch / EventSource / XMLHttpRequest wrappers ever see the URL. Cached CSS was masking the visual impact, but the network tab was loud and it would have bitten anyone on a cold cache or an offline reload.

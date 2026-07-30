@@ -7,7 +7,7 @@ set -e
 exec 2>&1
 
 DATA_DIR=/data/pi-agent
-mkdir -p "${DATA_DIR}/sessions"
+mkdir -p "${DATA_DIR}/sessions" "${DATA_DIR}/home"
 MODELS_JSON="${DATA_DIR}/models.json"
 
 # --- Auto-enable sidebar panel ---
@@ -29,18 +29,25 @@ GLM_API_KEY="$(bashio::config 'api_key' '')"
 MINIMAX_API_KEY="$(bashio::config 'minimax_api_key' '')"
 OPENAI_API_KEY="$(bashio::config 'openai_api_key' '')"
 OPENROUTER_API_KEY="$(bashio::config 'openrouter_api_key' '')"
-EXTRA_ALLOWED_HOSTS="$(bashio::config 'extra_allowed_hosts' '')"
+ANTHROPIC_API_KEY="$(bashio::config 'anthropic_api_key' '')"
+DEEPSEEK_API_KEY="$(bashio::config 'deepseek_api_key' '')"
+GROQ_API_KEY="$(bashio::config 'groq_api_key' '')"
 
 norm() { [ "${1}" = "null" ] && echo "" || echo "${1}"; }
 GLM_API_KEY="$(norm "${GLM_API_KEY}")"
 MINIMAX_API_KEY="$(norm "${MINIMAX_API_KEY}")"
 OPENAI_API_KEY="$(norm "${OPENAI_API_KEY}")"
 OPENROUTER_API_KEY="$(norm "${OPENROUTER_API_KEY}")"
+ANTHROPIC_API_KEY="$(norm "${ANTHROPIC_API_KEY}")"
+DEEPSEEK_API_KEY="$(norm "${DEEPSEEK_API_KEY}")"
+GROQ_API_KEY="$(norm "${GROQ_API_KEY}")"
 
 # At least one provider key must be present — otherwise the UI boots but the
 # model dropdown is empty and every chat attempt fails cryptically.
-if [ -z "${GLM_API_KEY}" ] && [ -z "${MINIMAX_API_KEY}" ] && [ -z "${OPENAI_API_KEY}" ] && [ -z "${OPENROUTER_API_KEY}" ]; then
-  bashio::log.fatal "No provider key configured — set at least one of api_key (GLM), minimax_api_key, openai_api_key, openrouter_api_key in Configuration"
+if [ -z "${GLM_API_KEY}" ] && [ -z "${MINIMAX_API_KEY}" ] && [ -z "${OPENAI_API_KEY}" ] \
+   && [ -z "${OPENROUTER_API_KEY}" ] && [ -z "${ANTHROPIC_API_KEY}" ] \
+   && [ -z "${DEEPSEEK_API_KEY}" ] && [ -z "${GROQ_API_KEY}" ]; then
+  bashio::log.fatal "No provider key configured — set at least one of api_key (GLM), minimax_api_key, openai_api_key, openrouter_api_key, anthropic_api_key, deepseek_api_key, groq_api_key in Configuration"
   exit 1
 fi
 
@@ -167,6 +174,114 @@ openrouter_provider_json() {
 EOF
 }
 
+# Anthropic direct — the "anthropic" api mode enables their native /v1/messages
+# format so we get first-class thinking blocks and cache_control markers,
+# something the openai-completions bridge on OpenRouter can't fully expose.
+anthropic_provider_json() {
+  cat <<'EOF'
+{
+  "baseUrl": "https://api.anthropic.com/v1",
+  "api": "anthropic",
+  "apiKey": "$ANTHROPIC_API_KEY",
+  "thinkingFormat": "anthropic",
+  "models": [
+    {
+      "id": "claude-opus-4-7",
+      "name": "Claude Opus 4.7",
+      "reasoning": true,
+      "input": ["text", "image"],
+      "contextWindow": 200000,
+      "maxTokens": 32000,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "name": "Claude Sonnet 4.6",
+      "reasoning": true,
+      "input": ["text", "image"],
+      "contextWindow": 200000,
+      "maxTokens": 64000,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    },
+    {
+      "id": "claude-haiku-4-5-20251001",
+      "name": "Claude Haiku 4.5",
+      "reasoning": false,
+      "input": ["text", "image"],
+      "contextWindow": 200000,
+      "maxTokens": 8192,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    }
+  ]
+}
+EOF
+}
+
+# DeepSeek direct — cheaper than DeepSeek-via-OpenRouter and exposes the
+# native `deepseek-reasoner` model with thinking tokens.
+deepseek_provider_json() {
+  cat <<'EOF'
+{
+  "baseUrl": "https://api.deepseek.com/v1",
+  "api": "openai-completions",
+  "apiKey": "$DEEPSEEK_API_KEY",
+  "thinkingFormat": "deepseek",
+  "models": [
+    {
+      "id": "deepseek-chat",
+      "name": "DeepSeek V3",
+      "reasoning": false,
+      "input": ["text"],
+      "contextWindow": 64000,
+      "maxTokens": 8192,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    },
+    {
+      "id": "deepseek-reasoner",
+      "name": "DeepSeek R1",
+      "reasoning": true,
+      "input": ["text"],
+      "contextWindow": 64000,
+      "maxTokens": 8192,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    }
+  ]
+}
+EOF
+}
+
+# Groq — LPU-hosted, extreme throughput (~500 tok/s) on Llama / Mixtral / Kimi.
+# Useful as a "cheap fast draft" tier alongside the flagship reasoners.
+groq_provider_json() {
+  cat <<'EOF'
+{
+  "baseUrl": "https://api.groq.com/openai/v1",
+  "api": "openai-completions",
+  "apiKey": "$GROQ_API_KEY",
+  "models": [
+    {
+      "id": "llama-3.3-70b-versatile",
+      "name": "Llama 3.3 70B (Groq)",
+      "reasoning": false,
+      "input": ["text"],
+      "contextWindow": 131072,
+      "maxTokens": 32768,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    },
+    {
+      "id": "moonshotai/kimi-k2-instruct",
+      "name": "Kimi K2 (Groq)",
+      "reasoning": false,
+      "input": ["text"],
+      "contextWindow": 131072,
+      "maxTokens": 16384,
+      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+    }
+  ]
+}
+EOF
+}
+
 # --- Seed models.json on first ever start ---
 # Prefer GLM if set (backwards compat with v0.1.0+ installs); otherwise pick
 # whichever provider the user configured first from the priority list. User
@@ -175,12 +290,21 @@ if [ ! -f "${MODELS_JSON}" ]; then
   if [ -n "${GLM_API_KEY}" ]; then
     bashio::log.info "Bootstrapping ${MODELS_JSON} with GLM provider"
     printf '{"providers":{"glm":%s}}' "$(glm_provider_json)" > "${MODELS_JSON}"
+  elif [ -n "${ANTHROPIC_API_KEY}" ]; then
+    bashio::log.info "Bootstrapping ${MODELS_JSON} with Anthropic provider"
+    printf '{"providers":{"anthropic":%s}}' "$(anthropic_provider_json)" > "${MODELS_JSON}"
   elif [ -n "${OPENAI_API_KEY}" ]; then
     bashio::log.info "Bootstrapping ${MODELS_JSON} with OpenAI provider"
     printf '{"providers":{"openai":%s}}' "$(openai_provider_json)" > "${MODELS_JSON}"
   elif [ -n "${OPENROUTER_API_KEY}" ]; then
     bashio::log.info "Bootstrapping ${MODELS_JSON} with OpenRouter provider"
     printf '{"providers":{"openrouter":%s}}' "$(openrouter_provider_json)" > "${MODELS_JSON}"
+  elif [ -n "${DEEPSEEK_API_KEY}" ]; then
+    bashio::log.info "Bootstrapping ${MODELS_JSON} with DeepSeek provider"
+    printf '{"providers":{"deepseek":%s}}' "$(deepseek_provider_json)" > "${MODELS_JSON}"
+  elif [ -n "${GROQ_API_KEY}" ]; then
+    bashio::log.info "Bootstrapping ${MODELS_JSON} with Groq provider"
+    printf '{"providers":{"groq":%s}}' "$(groq_provider_json)" > "${MODELS_JSON}"
   elif [ -n "${MINIMAX_API_KEY}" ]; then
     bashio::log.info "Bootstrapping ${MODELS_JSON} with MiniMax provider"
     printf '{"providers":{"minimax":%s}}' "$(minimax_provider_json)" > "${MODELS_JSON}"
@@ -206,6 +330,9 @@ maybe_add_provider() {
 maybe_add_provider "${MINIMAX_API_KEY}"    "minimax"    "minimax_provider_json"
 maybe_add_provider "${OPENAI_API_KEY}"     "openai"     "openai_provider_json"
 maybe_add_provider "${OPENROUTER_API_KEY}" "openrouter" "openrouter_provider_json"
+maybe_add_provider "${ANTHROPIC_API_KEY}"  "anthropic"  "anthropic_provider_json"
+maybe_add_provider "${DEEPSEEK_API_KEY}"   "deepseek"   "deepseek_provider_json"
+maybe_add_provider "${GROQ_API_KEY}"       "groq"       "groq_provider_json"
 
 # --- Per-provider startup self-check ---
 # Cheap curl each configured provider once. Non-fatal — the UI should always
@@ -230,25 +357,56 @@ check_provider() {
   esac
 }
 
-check_provider "GLM"        "https://open.bigmodel.cn/api/paas/v4/chat/completions" "${GLM_API_KEY}"        "glm-4.6"
-check_provider "MiniMax"    "https://api.minimax.io/v1/chat/completions"            "${MINIMAX_API_KEY}"    "MiniMax-M3"
-check_provider "OpenAI"     "https://api.openai.com/v1/chat/completions"            "${OPENAI_API_KEY}"     "gpt-4o-mini"
-check_provider "OpenRouter" "https://openrouter.ai/api/v1/chat/completions"         "${OPENROUTER_API_KEY}" "openai/gpt-4o-mini"
+# Anthropic doesn't accept Bearer auth — needs its own x-api-key + anthropic-version
+# header. Its `messages` API also refuses `max_tokens=1` on non-Haiku models, so
+# use Haiku for the probe (cheapest + universally allowed).
+check_anthropic() {
+  [ -z "${ANTHROPIC_API_KEY}" ] && return 0
+  bashio::log.info "Checking Anthropic provider reachability..."
+  local code
+  code=$(curl -sSL --max-time 10 -o /dev/null -w '%{http_code}' \
+    -X POST \
+    -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+    -H "anthropic-version: 2023-06-01" \
+    -H "Content-Type: application/json" \
+    -d '{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"1"}]}' \
+    "https://api.anthropic.com/v1/messages" 2>/dev/null || echo 000)
+  case "${code}" in
+    200)         bashio::log.info    "Anthropic provider OK (HTTP 200)" ;;
+    401|403)     bashio::log.warning "Anthropic auth failed (HTTP ${code}) — fix key in Configuration tab" ;;
+    402|429)     bashio::log.warning "Anthropic auth OK but limited (HTTP ${code}) — out of credits / rate-limited" ;;
+    000)         bashio::log.warning "Anthropic unreachable — network / DNS issue" ;;
+    *)           bashio::log.warning "Anthropic returned HTTP ${code} — chat may fail until fixed" ;;
+  esac
+}
+
+check_provider   "GLM"        "https://open.bigmodel.cn/api/paas/v4/chat/completions" "${GLM_API_KEY}"        "glm-4.6"
+check_provider   "MiniMax"    "https://api.minimax.io/v1/chat/completions"            "${MINIMAX_API_KEY}"    "MiniMax-M3"
+check_provider   "OpenAI"     "https://api.openai.com/v1/chat/completions"            "${OPENAI_API_KEY}"     "gpt-4o-mini"
+check_provider   "OpenRouter" "https://openrouter.ai/api/v1/chat/completions"         "${OPENROUTER_API_KEY}" "openai/gpt-4o-mini"
+check_provider   "DeepSeek"   "https://api.deepseek.com/v1/chat/completions"          "${DEEPSEEK_API_KEY}"   "deepseek-chat"
+check_provider   "Groq"       "https://api.groq.com/openai/v1/chat/completions"       "${GROQ_API_KEY}"       "llama-3.3-70b-versatile"
+check_anthropic
 
 # --- Runtime env for pi-web ---
 export GLM_API_KEY
 export MINIMAX_API_KEY
 export OPENAI_API_KEY
 export OPENROUTER_API_KEY
+export ANTHROPIC_API_KEY
+export DEEPSEEK_API_KEY
+export GROQ_API_KEY
 export PI_CODING_AGENT_DIR="${DATA_DIR}"
 export PI_WEB_HOSTNAME="0.0.0.0"
 export PI_WEB_NO_OPEN=1
 export PORT=30141
 
-if [ -n "${EXTRA_ALLOWED_HOSTS}" ] && [ "${EXTRA_ALLOWED_HOSTS}" != "null" ]; then
-  export PI_WEB_ALLOWED_HOSTS="${EXTRA_ALLOWED_HOSTS}"
-  bashio::log.info "PI_WEB_ALLOWED_HOSTS=${PI_WEB_ALLOWED_HOSTS}"
-fi
+# Pi coding agent creates ephemeral worktrees under $HOME/pi-cwd-<date>/. The
+# container root filesystem is not persisted across addon updates, so those
+# worktrees would vanish on every image bump. Redirect $HOME into /data (which
+# is persistent per-addon and covered by HA snapshots) so user work survives.
+export HOME="${DATA_DIR}/home"
+cd "${HOME}"
 
-bashio::log.info "Starting pi-web on 0.0.0.0:30141 (data: ${PI_CODING_AGENT_DIR})"
+bashio::log.info "Starting pi-web on 0.0.0.0:30141 (data: ${PI_CODING_AGENT_DIR}, home: ${HOME})"
 exec pi-web
