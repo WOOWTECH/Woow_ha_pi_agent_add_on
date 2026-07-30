@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.0
+
+- **Install `git` + `openssh-client` in the image** so pi-web's Add-skill flow can clone repos. `npx skills add <github-url>` (used by the Skills modal's Search button, the `owner/repo` shorthand, and skills.sh entries pointing at a repo) shells out to `git clone` via `simple-git`. Missing `git` caused every repo-backed install to fail with `spawn git ENOENT`. `openssh-client` enables the CLI's SSH clone fallback for private repos (public repos over HTTPS work without it, but the CLI's auth-failure retry path uses `ssh -o BatchMode=yes`). `gh` intentionally omitted (20MB+, only used for a swallowed `gh auth token` fallback). Verified against `skills` CLI 1.5.21 source — only git/ssh/gh are shelled out to; tar extraction uses node-tar; no submodule / lfs paths.
+
 ## 0.11.0
 
 - **Video-production pipeline support**. Adds every CLI the `pitch_video` workflow needs (TTS → Playwright capture → ffmpeg segments/xfade/burn → rclone Drive push) so users can run the full 8-step pipeline inside the addon without leaving Home Assistant. Split into two persistence tiers to keep image size flat across upgrades:

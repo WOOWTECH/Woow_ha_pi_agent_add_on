@@ -32,7 +32,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # apt security updates.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates curl gnupg jq nginx \
+       ca-certificates curl git gnupg jq nginx openssh-client \
        python3 python3-venv python3-pip \
        ffmpeg \
        fonts-noto-cjk fonts-noto-color-emoji fontconfig \
