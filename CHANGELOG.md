@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.4
+
+- Silence the last remaining console error from v0.10.3. Rejecting `navigator.serviceWorker.register` still tripped pi-web's own `.catch()` handler that emits `console.error("Failed to register the Pi Web service worker:", err)` — 1 red line in the console on every load. Fix: resolve with a minimal fake `ServiceWorkerRegistration`-shaped object (`{scope:"/",installing:null,waiting:null,active:null,update()→resolve,unregister()→resolve(true),add/removeEventListener}`) so pi-web's success `.then()` runs silently. No functional change — SW still isn't actually registered — but the console is now clean.
+
 ## 0.10.3
 
 - Neutralize pi-web `0.8.4`'s `navigator.serviceWorker.register('/sw.js?v=0.8.4', {scope: '/'})` call. Under HA Ingress this fails two ways: (a) the script URL resolves against HA Core (`/sw.js` → 404 from HA), and (b) even if we prefixed the URL, the `{scope: '/'}` option asks the browser to have the SW control the entire HA origin — which crosses the ingress boundary and would either be rejected by the SW's `Service-Worker-Allowed` policy or, worse, briefly hijack HA Core requests. Fix: extend the `</head>` shim to replace `navigator.serviceWorker.register` with a function that returns `Promise.reject(new Error("ServiceWorker disabled under HA Ingress"))`. Pi-web doesn't need offline PWA support inside HA (it's a local-network tool), so silently disabling registration removes 2 red console errors on every page load without any functional loss. Kept the try/catch around the shim block in case a future browser removes `navigator.serviceWorker` entirely.
