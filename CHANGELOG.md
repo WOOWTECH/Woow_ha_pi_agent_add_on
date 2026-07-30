@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.1
+
+- Extend the `</head>` shim's `T()` predicate to match `/manifest*` and `/icons/*` paths. pi-web `0.8.4` added three new PWA-related `<link>` tags to the head — `<link rel="manifest" href="/manifest.webmanifest">`, `<link rel="icon" href="/icons/icon-192.png">`, `<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">` — that the setAttribute wrapper saw but the predicate treated as "not one of our upstream paths", so they resolved against HA Core origin instead of the ingress prefix. The three links then 404'd (HA Core has no `/manifest.webmanifest` or `/icons/*` routes) — visible as three red network entries on every page load. Adding two literal prefix branches (`/manifest` covers both `.webmanifest` and future `.json` fallback; `/icons/` covers the whole PWA icon tree) restores 100% prefixed asset loading without any additional shim complexity.
+
 ## 0.10.0
 
 - **Add three new BYOK providers**: Anthropic direct, DeepSeek direct, and Groq. The catalog is now 7 providers (GLM / MiniMax / OpenAI / OpenRouter / Anthropic / DeepSeek / Groq). Rationale per provider:

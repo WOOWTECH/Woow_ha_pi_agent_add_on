@@ -1,5 +1,5 @@
 name: Woow HA Pi Agent
-version: "0.10.0"
+version: "0.10.1"
 slug: woow_ha_pi_agent
 description: pi-web + pi coding agent SDK, pre-wired to GLM / MiniMax / OpenAI / OpenRouter / Anthropic / DeepSeek / Groq (BYOK)
 url: https://github.com/WOOWTECH/Woow_ha_pi_agent_add_on
