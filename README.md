@@ -147,7 +147,7 @@ flowchart TD
     PiWeb --> Ready
 ```
 
-Full architecture write-up: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Full architecture write-up: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). File-by-file deployment record for the currently-running v0.12.0: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Design brief for the upcoming k3s port: [`docs/K3S_BLUEPRINT.md`](docs/K3S_BLUEPRINT.md).
 
 ## Screenshots
 

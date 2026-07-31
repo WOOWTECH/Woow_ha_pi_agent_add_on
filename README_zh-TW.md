@@ -147,7 +147,7 @@ flowchart TD
     PiWeb --> Ready
 ```
 
-完整架構寫在：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。
+完整架構寫在：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。目前部屬（v0.12.0）逐檔紀錄：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。k3s 版本設計藍圖：[`docs/K3S_BLUEPRINT.md`](docs/K3S_BLUEPRINT.md)。
 
 ## 畫面截圖
 
