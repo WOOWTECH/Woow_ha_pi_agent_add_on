@@ -5,8 +5,8 @@
 <h1 align="center">Woow HA Pi Agent Add-on</h1>
 
 <p align="center">
-  <b>The <a href="https://github.com/agegr/pi-web">pi-web</a> workspace, packaged as a Home Assistant Supervisor add-on and pre-wired to 7 reasoning providers.</b><br/>
-  <sub>GLM · MiniMax · OpenAI · OpenRouter · Anthropic · DeepSeek · Groq — BYOK, all optional, at least one required.</sub>
+  <b>The <a href="https://github.com/agegr/pi-web">pi-web</a> workspace, packaged as a Home Assistant Supervisor add-on with the full <code>pitch_video</code> pipeline baked in.</b><br/>
+  <sub>AI providers (GLM · MiniMax · OpenAI · OpenRouter · Anthropic · DeepSeek · Groq · …) configured <b>inside pi-web</b> — no HA config edit, no restart.</sub>
 </p>
 
 <p align="center">
@@ -36,13 +36,13 @@
 
 ## Overview
 
-**Woow HA Pi Agent** is a single Home Assistant Supervisor add-on that ships [`@agegr/pi-web`](https://www.npmjs.com/package/@agegr/pi-web) — the browser workspace for the [pi coding agent](https://github.com/earendil-works/pi) — pre-wired to seven reasoning providers. Install once, paste a key, and every HA admin gets a per-session choice of model directly from the HA sidebar.
+**Woow HA Pi Agent** is a single Home Assistant Supervisor add-on that ships [`@agegr/pi-web`](https://www.npmjs.com/package/@agegr/pi-web) — the browser workspace for the [pi coding agent](https://github.com/earendil-works/pi) — plus the full video-production pipeline. Install once, open the sidebar tile, add your providers from inside pi-web, and every HA admin gets a per-session choice of model.
 
 - **Zero-port install.** UI runs behind HA Ingress; no LAN/firewall changes.
-- **BYOK, side-by-side.** Compare GLM-4.6 vs. Claude Opus 4.7 vs. Groq Llama in the same UI.
-- **State survives updates.** Sessions + models + skill worktrees live under `/data/pi-agent/` and ride HA snapshots.
+- **BYOK inside pi-web.** Add providers from the Models panel — no addon restart, no HA config edit. Since v0.13.0 the addon Configuration tab only holds container-level knobs (log level, timezone, video-tools reset, env-var escape hatch).
+- **State survives updates.** Sessions + models + skill worktrees + provider keys live under `/data/pi-agent/` and ride HA snapshots.
 - **Skill store built in.** Add skills from GitHub URLs, `owner/repo` shorthand, or local paths straight from the UI (v0.12.0 shipped `git`+`openssh-client` so this works out of the box).
-- **Video-production pipeline.** ffmpeg + Playwright + edge-tts + rclone all pre-installed for the `pitch_video` workflow (v0.11.0).
+- **Video-production pipeline.** ffmpeg + Playwright + edge-tts + rclone all pre-installed for the `pitch_video` workflow (v0.11.0). One-shot re-download switch in Configuration (v0.13.0).
 - **Watchdog.** Supervisor probes `/api/home`; hangs auto-restart.
 
 ## Quick Start
@@ -51,14 +51,16 @@
 |---:|---|
 | 1 | **Settings → Add-ons → Add-on Store → ⋮ → Repositories** |
 | 2 | Add `https://github.com/WOOWTECH/Woow_ha_pi_agent_add_on` and install **Woow HA Pi Agent** |
-| 3 | Open **Configuration**, paste **at least one** provider API key, save |
-| 4 | **Start**, then open the **Pi Agent** entry from the HA sidebar (admins only) |
+| 3 | **Start** — leave Configuration on defaults, or tweak `log_level` / `timezone` |
+| 4 | Open the **Pi Agent** entry from the HA sidebar (admins only) → **Models** panel → add a provider + paste its key |
 
-That's it — a fresh install answers on the sidebar tile within ~10 s. See [`DOCS.md`](DOCS.md) for per-provider notes.
+That's it — a fresh install answers on the sidebar tile within ~10 s. See [`DOCS.md`](DOCS.md) for the addon options reference.
 
 ## Features
 
-### Provider catalog (v0.12.0)
+### Provider catalog (managed in pi-web)
+
+The addon no longer pins a provider list — everything is added from the pi-web **Models** panel at runtime and persisted to `/data/pi-agent/models.json`. Common picks the team runs side-by-side:
 
 | Provider | API mode | Signature model(s) | Why |
 |---|---|---|---|
@@ -70,16 +72,17 @@ That's it — a fresh install answers on the sidebar tile within ~10 s. See [`DO
 | **DeepSeek direct** | `openai-completions` | `deepseek-chat` · `deepseek-reasoner` (R1) | Cheaper than OpenRouter; R1 exposes native thinking tokens |
 | **Groq** | `openai-completions` | `llama-3.3-70b-versatile` · `kimi-k2-instruct` | LPU-hosted (~500 tok/s), "cheap fast draft" tier |
 
-Each provider is enabled only when its key is set. Boot-time self-check probes every configured provider once and logs `HTTP 200 / 401 / 402 / 429 / 000` per line in the addon Logs tab — a bad key surfaces in seconds, not after the first chat.
+Use the Models panel's **Test** button to verify each new provider — the addon no longer runs a boot-time self-check (removed in v0.13.0 along with the api_key options).
 
 ### Runtime & operations
 
 - **In-process SDK.** `pi-web` imports `@earendil-works/pi-coding-agent` — one Node process, no separate agent daemon.
 - **HA Ingress + sidebar auto-enable.** No published ports; sidebar tile shows on first boot via Supervisor API POST (fixed in v0.8.0).
 - **s6-overlay supervisor.** `nginx` (front) + `pi-web` (upstream) + `video-tools-init` (oneshot).
-- **Idempotent seed.** `models.json` merges added providers on subsequent boots via `jq`; user edits survive restarts.
+- **Models managed inside pi-web.** `/data/pi-agent/models.json` is owned by the pi-web UI — add / rename / rotate providers without restarting the addon.
 - **Persistent worktrees.** `HOME=/data/pi-agent/home` so `pi-cwd-*/` folders and installed skills ride addon updates (v0.10.0).
 - **Cold backup policy.** `backup_exclude` skips rebuildable caches (`playwright-cache/`, `venv/`, `**/clips/**`, `**/segments/**`) — snapshots stay small; `rclone.conf` stays inside so Drive tokens survive a restore.
+- **Self-repairing video tools.** `reset_video_tools` toggle wipes the Python venv + Playwright cache on next boot and auto-reverts to `false` via Supervisor API — no risk of getting stuck in a redownload loop (v0.13.0).
 
 ## Architecture
 
@@ -142,12 +145,12 @@ flowchart TD
     Skip --> Longrun["long-run services"]
     Sentinel --> Longrun
     Longrun --> Nginx["nginx service<br/>(port 30142)"]
-    Longrun --> PiWeb["pi-web service<br/>exec 2>&amp;1<br/>self-check per provider<br/>POST ingress_panel=true<br/>exec pi-web"]
+    Longrun --> PiWeb["pi-web service<br/>exec 2>&amp;1<br/>apply log_level / TZ<br/>reset_video_tools (one-shot)<br/>export env_vars<br/>POST ingress_panel=true<br/>exec pi-web"]
     Nginx --> Ready(["watchdog OK<br/>UI live"])
     PiWeb --> Ready
 ```
 
-Full architecture write-up: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). File-by-file deployment record for the currently-running v0.12.0: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Design brief for the upcoming k3s port: [`docs/K3S_BLUEPRINT.md`](docs/K3S_BLUEPRINT.md).
+Full architecture write-up: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). File-by-file deployment record: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Design brief for the upcoming k3s port: [`docs/K3S_BLUEPRINT.md`](docs/K3S_BLUEPRINT.md).
 
 ## Screenshots
 
@@ -159,7 +162,7 @@ Captured live from a working WoowTech HA install (`woowtech-ha.woowtech.io`).
 |:---:|:---:|
 | **Sidebar tile (admins only).** `panel_admin: true` gates the entry; auto-enabled on every boot via the Supervisor API — no toggle hunt on fresh installs. | **Add-on Info tab.** Shows current version, hostname, "Open Web UI" button (Ingress route), and the standard Supervisor controls. |
 | ![HA add-on config](docs/screenshots/ha_addon_config.png) | ![HA add-on logs](docs/screenshots/ha_addon_logs.png) |
-| **Configuration tab.** Seven optional `password?` fields. Empty fields = provider skipped. At least one key required or the add-on refuses to boot (fatal log line). | **Logs tab.** Per-provider self-check output (`HTTP 200 / 401 / 402 / 429 / 000`) — a bad key surfaces here in seconds, not after the first chat. |
+| **Configuration tab (v0.13.0).** Container-level knobs only: `log_level` radio, `timezone` (IANA), `reset_video_tools` one-shot switch, `env_vars` nested list. AI provider keys moved into the pi-web Models panel. | **Logs tab.** bashio + pi-web (Next.js pino) logs interleaved; `LOG_LEVEL` from Configuration controls verbosity for both. |
 
 ### pi-web workspace
 
@@ -175,29 +178,24 @@ Captured live from a working WoowTech HA install (`woowtech-ha.woowtech.io`).
 
 ## Configuration
 
-| Option | Required | Notes |
-|---|---|---|
-| `api_key` | No† | GLM API key from `open.bigmodel.cn` |
-| `minimax_api_key` | No† | MiniMax API key from `api.minimax.io` |
-| `openai_api_key` | No† | OpenAI key from `platform.openai.com` |
-| `openrouter_api_key` | No† | OpenRouter key from `openrouter.ai` |
-| `anthropic_api_key` | No† | Anthropic key from `console.anthropic.com` |
-| `deepseek_api_key` | No† | DeepSeek key from `platform.deepseek.com` |
-| `groq_api_key` | No† | Groq key from `console.groq.com` |
+The addon settings page holds **container-level knobs only** (v0.13.0). Everything AI-related moved into the pi-web Models panel.
 
-† **At least one** must be set. The schema declares each as `password?` — HA stores them as secrets and never renders them in plaintext.
+| Option | Type | Default | Notes |
+|---|---|---|---|
+| `log_level` | `error` \| `warn` \| `info` \| `debug` | `info` | Controls bashio (startup/init) AND exported as `LOG_LEVEL` for pi-web's Next.js pino logger. `debug` when troubleshooting video pipeline or Playwright; `warn` to silence chatty info messages |
+| `timezone` | string (optional) | empty = UTC | IANA name (e.g. `Asia/Taipei`, `America/New_York`). Writes `/etc/timezone`, symlinks `/etc/localtime`, exports `TZ` for Node.js. Affects addon log timestamps, session record filenames, and video pipeline SRT cue timing |
+| `reset_video_tools` | bool | `false` | One-shot: wipes `venv` + `playwright-cache` + install sentinel on next boot, forcing `video-tools-init` to re-download ~720MB. **Auto-toggles back to `false` via Supervisor API** — you don't need to remember to disable it |
+| `env_vars` | list of `{name, value}` | `[]` | Advanced escape hatch — each entry becomes a `KEY=VALUE` export into the pi-web process (proxy config, provider base-URL overrides, Playwright download mirrors, etc.). `name` must match `^[A-Za-z_][A-Za-z0-9_]*$` or the entry is skipped with a warning. **Not** the place for AI provider keys |
 
-### First-run bootstrap
+### Where AI provider keys live
 
-`/data/pi-agent/models.json` is seeded on first boot in provider priority order:
+Since v0.13.0 the addon no longer holds any provider API keys. Manage them from **Pi Agent** (sidebar) → **Models** panel — pi-web owns `/data/pi-agent/models.json` and its own encrypted key storage. Keys persist across addon updates and are covered by HA snapshot backups.
 
-`GLM → Anthropic → OpenAI → OpenRouter → DeepSeek → Groq → MiniMax`
-
-Any additional providers whose keys are set later are merged in on subsequent boots via idempotent `jq` — **user edits win** (rename a model, remove a provider, add custom entries; they all survive). Only clearing `models.json` re-triggers the seed.
-
-Reference configs live in [`examples/models/`](examples/models/):
+Reference model configs live in [`examples/models/`](examples/models/):
 - [`glm-only.json`](examples/models/glm-only.json) — minimal GLM-4.6 setup with `thinkingFormat: "zai"`
 - [`multi-provider.json`](examples/models/multi-provider.json) — full 5-provider layout
+
+Copy either into `/data/pi-agent/models.json` for a starting point, then edit inside the Models panel.
 
 ## Skills System
 
@@ -256,7 +254,8 @@ Base: `ghcr.io/hassio-addons/debian-base:9.1.0`.
 | HA Ingress | Only HA-authenticated users can reach `/api/hassio_ingress/<token>/*` | HA session cookie |
 | Sidebar tile | Admins only (`panel_admin: true`) | HA admin role |
 | `X-Ingress-Path` | Whitelist-validated (`^/api/hassio_ingress/[A-Za-z0-9_-]{16,128}$`) before body-rewrite | Defense-in-depth vs. misconfigured upstream proxy |
-| API keys | Stored in `/data/options.json` (Supervisor-managed); declared as `password?`; passed to pi as `$*_API_KEY` env vars | HA host filesystem |
+| API keys | Stored **inside pi-web** under `/data/pi-agent/` (persistent, backed up by HA snapshots). Addon `options.json` no longer holds any AI keys since v0.13.0 | HA host filesystem |
+| `env_vars` escape hatch | Values are exported verbatim into the pi-web process — unvalidated content. `name` is regex-validated only | Treat as `/data/options.json` — do not paste secrets you wouldn't otherwise trust there |
 | pi-web app auth | **None.** Access control is delegated to HA. | Anyone with HA admin login = full pi-web access |
 | `rclone.conf` | Inside HA snapshots (unlike caches) so Drive tokens survive restore | HA backup encryption |
 
@@ -264,23 +263,24 @@ If you need per-user pi-web auth beyond HA login, put an auth-proxy in front of 
 
 ## Testing
 
-- **Boot self-check** — every configured provider probed with `max_tokens=1` at start; results logged per line.
+- **In-app provider Test button** — use the pi-web Models panel to probe any provider on demand (v0.13.0 replaces the old boot-time self-check).
 - **HA Supervisor watchdog** — `http://[HOST]:[PORT:30142]/api/home` polled on interval; auto-restart on hang.
-- **End-to-end verification cadence.** Every version tag goes through: (a) fresh install → sidebar tile visible → first chat succeeds; (b) Skills → Add skill from GitHub URL → skill appears in `<available_skills>`; (c) `pitch_video` dry-run through `python video/verify.py`. See [`tests/`](tests/) for the recorded fixtures.
+- **End-to-end verification cadence.** Every version tag goes through: (a) fresh install → sidebar tile visible → add a provider inside pi-web → first chat succeeds; (b) Skills → Add skill from GitHub URL → skill appears in `<available_skills>`; (c) `pitch_video` dry-run through `python video/verify.py`. See [`tests/`](tests/) for the recorded fixtures.
 
 ## Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
-| Add-on won't start, log says "No provider key configured" | Open Configuration, paste at least one key, save, start |
-| UI loads but every chat returns `401 身份验证失败` | API key wrong. Check Logs tab for the per-provider self-check line to identify which provider — rotate the offending key |
-| Chat returns `402` / `429` | Auth OK but out of credits / rate-limited. Refill or switch model from the Models dropdown |
+| Add-on Configuration tab shows no api_key fields after update | Expected — v0.13.0 moved keys into pi-web. Open the sidebar tile → **Models** panel to manage providers |
+| UI loads but every chat returns `401` | Provider key wrong. Open pi-web **Models** panel → edit the provider → paste a fresh key → hit **Test**. No addon restart needed |
+| Chat returns `402` / `429` | Auth OK but out of credits / rate-limited. Refill the provider account, or switch to another model from the Models dropdown |
 | "Open Web UI" button 404s | `ha core restart`; ingress token occasionally needs Supervisor re-registration |
 | Blank iframe, `/_next/...` 404s in network tab | nginx sub_filter or shim regression. Grep `ha addons logs b9cf5676_woow_ha_pi_agent` for nginx errors; check that `X-Ingress-Path` is present on the request |
 | Sidebar tile missing on fresh install | Toggle "Show in sidebar" manually on the Info tab (Supervisor POST occasionally races on slow hosts) |
 | Skills → Add fails with `spawn git ENOENT` | Pre-v0.12.0 image. Update to ≥0.12.0 — `git` + `openssh-client` are now baked in |
 | Worktree disappeared after addon update | Should not happen since v0.10.0. If you upgraded from ≤v0.9.1, pre-existing worktrees were on ephemeral rootfs — recreate under `HOME=/data/pi-agent/home` |
-| Video pipeline fails mid-run | `rm /data/pi-agent/.video-tools-installed`, then restart the addon — `video-tools-init` re-downloads the venv + Chromium |
+| Video pipeline fails mid-run | Toggle `reset_video_tools: true` in Configuration → restart the addon → `video-tools-init` re-downloads the venv + Chromium (auto-toggles back off) |
+| Log timestamps in the wrong timezone | Set `timezone: Asia/Taipei` (or your IANA name) in Configuration; restart the addon |
 
 Full recipe in [`DOCS.md`](DOCS.md#troubleshooting).
 
@@ -294,7 +294,8 @@ Woow_ha_pi_agent_add_on/
 ├── build.yaml               Multi-arch build args
 ├── Dockerfile               Debian base → Node 22 → ffmpeg/rclone → pi-web pin
 ├── DOCS.md                  User-facing docs shown in HA add-on info tab
-├── CHANGELOG.md             Every release, with rationale (0.1.0 → 0.12.0)
+├── CHANGELOG.md             Every release, with rationale (0.1.0 → 0.13.0)
+├── translations/            HA addon UI translations (en, zh-tw)
 ├── README.md                This file
 ├── README_zh-TW.md          Traditional Chinese mirror
 ├── repository.yaml          HA add-on repository manifest
@@ -322,8 +323,8 @@ Woow_ha_pi_agent_add_on/
 docker buildx build \
   --build-arg BUILD_FROM=ghcr.io/hassio-addons/debian-base-amd64:9.1.0 \
   --build-arg BUILD_ARCH=amd64 \
-  --build-arg BUILD_VERSION=0.12.0-dev \
-  -t local/woow-ha-pi-agent-amd64:0.12.0-dev .
+  --build-arg BUILD_VERSION=0.13.0-dev \
+  -t local/woow-ha-pi-agent-amd64:0.13.0-dev .
 ```
 
 ### Bump pi-web

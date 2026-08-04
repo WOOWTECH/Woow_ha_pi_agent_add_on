@@ -2,59 +2,33 @@
 
 ## What it is
 
-A single Home Assistant Supervisor add-on that installs [`@agegr/pi-web`](https://github.com/agegr/pi-web) — a browser workspace for the [`pi`](https://github.com/earendil-works/pi) coding agent — pre-configured with **seven reasoning providers** so a team can compare them side-by-side:
+A single Home Assistant Supervisor add-on that installs [`@agegr/pi-web`](https://github.com/agegr/pi-web) — a browser workspace for the [`pi`](https://github.com/earendil-works/pi) coding agent — plus the full [`pitch_video`](#video-pipeline-v0110) pipeline (ffmpeg / Playwright / edge-tts / rclone).
 
-| Provider | Endpoint | Notes |
-|---|---|---|
-| **GLM-4.6** (智譜清言) | `https://open.bigmodel.cn/api/paas/v4` | `openai-completions` + `thinkingFormat: "zai"` |
-| **MiniMax M3** | `https://api.minimax.io/v1` | `openai-completions` + `thinkingFormat: "deepseek"` |
-| **OpenAI** | `https://api.openai.com/v1` | GPT-4o + GPT-4o mini |
-| **OpenRouter** | `https://openrouter.ai/api/v1` | Claude Sonnet 4 / GPT-4o / DeepSeek / Llama 3.3 70B curated set |
-| **Anthropic direct** | `https://api.anthropic.com/v1` | `anthropic` API mode — first-class thinking blocks + cache_control markers, Opus 4.7 / Sonnet 4.6 / Haiku 4.5 |
-| **DeepSeek direct** | `https://api.deepseek.com/v1` | Cheaper than via OpenRouter; exposes `deepseek-reasoner` (R1) with thinking tokens |
-| **Groq** | `https://api.groq.com/openai/v1` | LPU-hosted, ~500 tok/s draft tier — Llama 3.3 70B + Kimi K2 |
-
-Each provider is enabled only when its key is set; unset providers are skipped silently.
+AI providers (GLM, MiniMax, OpenAI, OpenRouter, Anthropic, DeepSeek, Groq, …) are configured **inside the pi-web UI** — open the Models panel, paste a key, done. No addon restart, no HA config edit.
 
 pi-web imports `@earendil-works/pi-coding-agent` as an in-process SDK, so there is no separate agent daemon — one process handles both UI and inference.
 
 ## Configuration
 
-| Option | Required | Notes |
-|---|---|---|
-| `api_key` | No† | GLM API key from `open.bigmodel.cn`. |
-| `minimax_api_key` | No† | MiniMax API key from `api.minimax.io`. |
-| `openai_api_key` | No† | OpenAI API key from `platform.openai.com`. |
-| `openrouter_api_key` | No† | OpenRouter API key from `openrouter.ai`. |
-| `anthropic_api_key` | No† | Anthropic API key from `console.anthropic.com`. |
-| `deepseek_api_key` | No† | DeepSeek API key from `platform.deepseek.com`. |
-| `groq_api_key` | No† | Groq API key from `console.groq.com`. |
+The addon settings page holds **container-level knobs only**. Everything AI-related lives inside pi-web now.
 
-† **At least one** provider key must be set — the add-on refuses to boot otherwise (a fatal log line in the Logs tab makes this obvious rather than showing an empty model dropdown).
+| Option | Type | Default | Notes |
+|---|---|---|---|
+| `log_level` | `error` \| `warn` \| `info` \| `debug` | `info` | Applied to bashio (startup/init) AND exported as `LOG_LEVEL` for pi-web's Next.js pino logger. Switch to `debug` when troubleshooting video pipeline or Playwright issues; `warn` to silence chatty info messages. |
+| `timezone` | string (optional) | empty = UTC | IANA name (e.g. `Asia/Taipei`, `America/New_York`). Writes `/etc/timezone` + symlinks `/etc/localtime` + exports `TZ` (Node.js reads `process.env.TZ`, not the file). Affects addon log timestamps, session record filenames, and video pipeline SRT cue timing. |
+| `reset_video_tools` | bool | `false` | One-shot: on boot, wipes `/data/pi-agent/venv`, `/data/pi-agent/playwright-cache`, and the install sentinel, forcing `video-tools-init` to re-download the full 720MB tool set. **Auto-toggles back to `false` via Supervisor API after execution** so you don't get stuck in a redownload-every-restart loop. |
+| `env_vars` | list of `{name, value}` | `[]` | Advanced escape hatch. Each entry becomes a `KEY=VALUE` export into the pi-web process (proxy config, provider base-URL overrides, Playwright download mirrors, etc.). `name` is validated against `^[A-Za-z_][A-Za-z0-9_]*$` — invalid names are skipped with a warning line in Logs rather than crashing the whole script. **Not** the place for AI provider keys — those live in the pi-web UI. |
 
-All key options are declared as `password?` in the schema so HA stores them as secrets and never renders them in the UI in plaintext.
+### AI provider keys — migration from ≤v0.12.x
 
-## First-run bootstrap
+v0.13.0 removes the seven `*_api_key` addon options. If you had keys pasted there:
 
-On first start, the add-on writes `/data/pi-agent/models.json` seeded with the first provider it finds a key for, checked in the priority order:
+1. Upgrade the addon.
+2. Open **Pi Agent** (sidebar) → **Models** panel.
+3. Add each provider and paste its key. Keys are stored inside `/data/pi-agent/` (persistent, backed up by HA snapshots).
+4. Removed values in your old `/data/options.json` are ignored — HA drops keys not present in the new schema on first save.
 
-`GLM → Anthropic → OpenAI → OpenRouter → DeepSeek → Groq → MiniMax`
-
-Any additional providers whose keys are set get merged in on subsequent boots via an idempotent `jq` operation — user edits (renames, removed providers, added custom models) survive across restarts. Only clearing the whole file re-triggers the seed.
-
-All keys are referenced from the JSON as `$GLM_API_KEY` / `$OPENAI_API_KEY` / etc. and resolved from the environment at request time. Rotating a key in the Configuration tab takes effect on restart without editing files.
-
-## Per-provider startup self-check
-
-Every configured provider is probed once with a `max_tokens=1` request during boot. The result is logged to the addon Logs tab per line:
-
-- `HTTP 200` → provider OK
-- `HTTP 401/403` → key wrong — fix in Configuration
-- `HTTP 402/429` → auth OK but out of credits or rate-limited
-- `HTTP 000` → network / DNS unreachable
-- Anything else → chat may fail, unusual response
-
-The self-check is non-fatal — the UI always boots so the user can open Configuration and fix a bad key.
+There is **no auto-import** from the old addon options — those values are only visible to the Supervisor, and pi-web has its own storage. The addon logs no longer show a per-provider self-check line either; use the Models panel's "Test" button in pi-web instead.
 
 ## Accessing the UI
 
@@ -161,13 +135,13 @@ Logs from each retry show up in the addon Logs tab under the `video-tools-init` 
 ## Security notes
 
 - pi-web has **no application-level authentication**. Access control is delegated to Home Assistant: only HA users can hit the ingress endpoint, and the sidebar tile is gated to admins via `panel_admin: true`.
-- Provider API keys are stored in `/data/options.json` inside the add-on container (managed by HA Supervisor) and passed to pi as `$GLM_API_KEY` / `$OPENAI_API_KEY` / etc. Neither the add-on nor pi log the values.
+- Provider API keys are stored **inside pi-web** under `/data/pi-agent/` (persistent, covered by HA snapshots). Neither the addon nor pi log the values. Since v0.13.0 the addon `options.json` no longer holds any AI keys — rotate them in the pi-web Models panel.
+- The `env_vars` escape hatch is unvalidated *content-wise* — anything you set becomes a process env var. Do not paste secrets you would not otherwise trust in `/data/options.json`; that file lives on the HA host disk and is snapshotted with backups.
 - The nginx `X-Ingress-Path` header is whitelist-validated against `^/api/hassio_ingress/[A-Za-z0-9_-]{16,128}$` before it can reach any `sub_filter` body-rewrite or the shim's `window.__INGRESS_PATH__` literal — defense-in-depth against a misconfigured upstream proxy letting the client shape the header.
 
 ## Troubleshooting
 
-- **Add-on won't start with "No provider key configured"** — open Configuration tab, paste at least one key, save, then start.
-- **UI loads but chat returns 401** — API key wrong or provider quota exhausted. Rotate the key in Configuration; add-on restarts automatically. Check the Logs tab for the per-provider self-check line to identify which provider is failing.
+- **UI loads but chat returns 401** — API key wrong. Open the **Models** panel inside pi-web, edit the failing provider, paste a fresh key, and hit **Test**. No addon restart needed. (Reminder: as of v0.13.0, keys live inside pi-web, **not** in the addon Configuration tab.)
 - **Chat returns 402 / 429** — auth OK but out of credits / rate-limited. Refill the provider account or switch to another provider from the Models dropdown.
 - **"Open Web UI" button does nothing / 404 from ingress** — reload HA (`ha core restart`); the ingress token is minted at add-on start and occasionally needs the Supervisor to re-register the panel.
 - **Assets 404 under ingress prefix (blank page, network tab shows `/_next/...` 404s)** — should be handled by the nginx sub_filter wrapper + injected `</head>` shim (fetch / EventSource / XHR / history / setAttribute / property-setter interception). Check `ha addons logs b9cf5676_woow_ha_pi_agent` for nginx errors; look for a request path that does not start with `X-Ingress-Path`, which means Supervisor didn't inject the header.

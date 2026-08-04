@@ -8,9 +8,11 @@ exec 2>&1
 
 DATA_DIR=/data/pi-agent
 mkdir -p "${DATA_DIR}/sessions" "${DATA_DIR}/home"
-MODELS_JSON="${DATA_DIR}/models.json"
 
 # --- Auto-enable sidebar panel ---
+# Every user who installs this addon wants the sidebar entry; making them
+# hunt for the toggle in Info tab is pure friction. Runs on every boot and
+# is a no-op once already enabled.
 if [ -n "${SUPERVISOR_TOKEN}" ]; then
   if curl -sSL --max-time 5 -o /dev/null -w '%{http_code}' \
       -X POST \
@@ -24,378 +26,77 @@ if [ -n "${SUPERVISOR_TOKEN}" ]; then
   fi
 fi
 
-# --- Config from HA UI (options.json) ---
-GLM_API_KEY="$(bashio::config 'api_key' '')"
-MINIMAX_API_KEY="$(bashio::config 'minimax_api_key' '')"
-OPENAI_API_KEY="$(bashio::config 'openai_api_key' '')"
-OPENROUTER_API_KEY="$(bashio::config 'openrouter_api_key' '')"
-ANTHROPIC_API_KEY="$(bashio::config 'anthropic_api_key' '')"
-DEEPSEEK_API_KEY="$(bashio::config 'deepseek_api_key' '')"
-GROQ_API_KEY="$(bashio::config 'groq_api_key' '')"
+# --- Log level ---
+# Applied to bashio (this script + video-tools-init) AND exported as LOG_LEVEL
+# for pi-web (Next.js pino logger reads it). Nginx access_log stays default;
+# switch to `debug` to see request-level trace, `warn` to silence chatty info.
+LOG_LEVEL="$(bashio::config 'log_level' 'info')"
+bashio::log.level "${LOG_LEVEL}"
+export LOG_LEVEL
 
-norm() { [ "${1}" = "null" ] && echo "" || echo "${1}"; }
-GLM_API_KEY="$(norm "${GLM_API_KEY}")"
-MINIMAX_API_KEY="$(norm "${MINIMAX_API_KEY}")"
-OPENAI_API_KEY="$(norm "${OPENAI_API_KEY}")"
-OPENROUTER_API_KEY="$(norm "${OPENROUTER_API_KEY}")"
-ANTHROPIC_API_KEY="$(norm "${ANTHROPIC_API_KEY}")"
-DEEPSEEK_API_KEY="$(norm "${DEEPSEEK_API_KEY}")"
-GROQ_API_KEY="$(norm "${GROQ_API_KEY}")"
-
-# At least one provider key must be present — otherwise the UI boots but the
-# model dropdown is empty and every chat attempt fails cryptically.
-if [ -z "${GLM_API_KEY}" ] && [ -z "${MINIMAX_API_KEY}" ] && [ -z "${OPENAI_API_KEY}" ] \
-   && [ -z "${OPENROUTER_API_KEY}" ] && [ -z "${ANTHROPIC_API_KEY}" ] \
-   && [ -z "${DEEPSEEK_API_KEY}" ] && [ -z "${GROQ_API_KEY}" ]; then
-  bashio::log.fatal "No provider key configured — set at least one of api_key (GLM), minimax_api_key, openai_api_key, openrouter_api_key, anthropic_api_key, deepseek_api_key, groq_api_key in Configuration"
-  exit 1
-fi
-
-# --- Provider snippet writers (stdout is a full provider object JSON) ---
-glm_provider_json() {
-  cat <<'EOF'
-{
-  "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
-  "api": "openai-completions",
-  "apiKey": "$GLM_API_KEY",
-  "thinkingFormat": "zai",
-  "models": [
-    {
-      "id": "glm-4.6",
-      "name": "GLM-4.6",
-      "reasoning": true,
-      "input": ["text"],
-      "contextWindow": 200000,
-      "maxTokens": 16384,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    }
-  ]
-}
-EOF
-}
-
-minimax_provider_json() {
-  cat <<'EOF'
-{
-  "baseUrl": "https://api.minimax.io/v1",
-  "api": "openai-completions",
-  "apiKey": "$MINIMAX_API_KEY",
-  "thinkingFormat": "deepseek",
-  "models": [
-    {
-      "id": "MiniMax-M3",
-      "name": "MiniMax M3",
-      "reasoning": true,
-      "input": ["text"],
-      "contextWindow": 200000,
-      "maxTokens": 16384,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    }
-  ]
-}
-EOF
-}
-
-openai_provider_json() {
-  cat <<'EOF'
-{
-  "baseUrl": "https://api.openai.com/v1",
-  "api": "openai-completions",
-  "apiKey": "$OPENAI_API_KEY",
-  "models": [
-    {
-      "id": "gpt-4o",
-      "name": "GPT-4o",
-      "reasoning": false,
-      "input": ["text", "image"],
-      "contextWindow": 128000,
-      "maxTokens": 16384,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    },
-    {
-      "id": "gpt-4o-mini",
-      "name": "GPT-4o mini",
-      "reasoning": false,
-      "input": ["text", "image"],
-      "contextWindow": 128000,
-      "maxTokens": 16384,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    }
-  ]
-}
-EOF
-}
-
-openrouter_provider_json() {
-  cat <<'EOF'
-{
-  "baseUrl": "https://openrouter.ai/api/v1",
-  "api": "openai-completions",
-  "apiKey": "$OPENROUTER_API_KEY",
-  "models": [
-    {
-      "id": "anthropic/claude-sonnet-4",
-      "name": "Claude Sonnet 4 (via OR)",
-      "reasoning": true,
-      "input": ["text", "image"],
-      "contextWindow": 200000,
-      "maxTokens": 16384,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    },
-    {
-      "id": "openai/gpt-4o",
-      "name": "GPT-4o (via OR)",
-      "reasoning": false,
-      "input": ["text", "image"],
-      "contextWindow": 128000,
-      "maxTokens": 16384,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    },
-    {
-      "id": "deepseek/deepseek-chat",
-      "name": "DeepSeek Chat (via OR)",
-      "reasoning": false,
-      "input": ["text"],
-      "contextWindow": 128000,
-      "maxTokens": 8192,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    },
-    {
-      "id": "meta-llama/llama-3.3-70b-instruct",
-      "name": "Llama 3.3 70B (via OR)",
-      "reasoning": false,
-      "input": ["text"],
-      "contextWindow": 131072,
-      "maxTokens": 16384,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    }
-  ]
-}
-EOF
-}
-
-# Anthropic direct — the "anthropic" api mode enables their native /v1/messages
-# format so we get first-class thinking blocks and cache_control markers,
-# something the openai-completions bridge on OpenRouter can't fully expose.
-anthropic_provider_json() {
-  cat <<'EOF'
-{
-  "baseUrl": "https://api.anthropic.com/v1",
-  "api": "anthropic",
-  "apiKey": "$ANTHROPIC_API_KEY",
-  "thinkingFormat": "anthropic",
-  "models": [
-    {
-      "id": "claude-opus-4-7",
-      "name": "Claude Opus 4.7",
-      "reasoning": true,
-      "input": ["text", "image"],
-      "contextWindow": 200000,
-      "maxTokens": 32000,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    },
-    {
-      "id": "claude-sonnet-4-6",
-      "name": "Claude Sonnet 4.6",
-      "reasoning": true,
-      "input": ["text", "image"],
-      "contextWindow": 200000,
-      "maxTokens": 64000,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    },
-    {
-      "id": "claude-haiku-4-5-20251001",
-      "name": "Claude Haiku 4.5",
-      "reasoning": false,
-      "input": ["text", "image"],
-      "contextWindow": 200000,
-      "maxTokens": 8192,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    }
-  ]
-}
-EOF
-}
-
-# DeepSeek direct — cheaper than DeepSeek-via-OpenRouter and exposes the
-# native `deepseek-reasoner` model with thinking tokens.
-deepseek_provider_json() {
-  cat <<'EOF'
-{
-  "baseUrl": "https://api.deepseek.com/v1",
-  "api": "openai-completions",
-  "apiKey": "$DEEPSEEK_API_KEY",
-  "thinkingFormat": "deepseek",
-  "models": [
-    {
-      "id": "deepseek-chat",
-      "name": "DeepSeek V3",
-      "reasoning": false,
-      "input": ["text"],
-      "contextWindow": 64000,
-      "maxTokens": 8192,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    },
-    {
-      "id": "deepseek-reasoner",
-      "name": "DeepSeek R1",
-      "reasoning": true,
-      "input": ["text"],
-      "contextWindow": 64000,
-      "maxTokens": 8192,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    }
-  ]
-}
-EOF
-}
-
-# Groq — LPU-hosted, extreme throughput (~500 tok/s) on Llama / Mixtral / Kimi.
-# Useful as a "cheap fast draft" tier alongside the flagship reasoners.
-groq_provider_json() {
-  cat <<'EOF'
-{
-  "baseUrl": "https://api.groq.com/openai/v1",
-  "api": "openai-completions",
-  "apiKey": "$GROQ_API_KEY",
-  "models": [
-    {
-      "id": "llama-3.3-70b-versatile",
-      "name": "Llama 3.3 70B (Groq)",
-      "reasoning": false,
-      "input": ["text"],
-      "contextWindow": 131072,
-      "maxTokens": 32768,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    },
-    {
-      "id": "moonshotai/kimi-k2-instruct",
-      "name": "Kimi K2 (Groq)",
-      "reasoning": false,
-      "input": ["text"],
-      "contextWindow": 131072,
-      "maxTokens": 16384,
-      "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-    }
-  ]
-}
-EOF
-}
-
-# --- Seed models.json on first ever start ---
-# Prefer GLM if set (backwards compat with v0.1.0+ installs); otherwise pick
-# whichever provider the user configured first from the priority list. User
-# edits to models.json survive across restarts.
-if [ ! -f "${MODELS_JSON}" ]; then
-  if [ -n "${GLM_API_KEY}" ]; then
-    bashio::log.info "Bootstrapping ${MODELS_JSON} with GLM provider"
-    printf '{"providers":{"glm":%s}}' "$(glm_provider_json)" > "${MODELS_JSON}"
-  elif [ -n "${ANTHROPIC_API_KEY}" ]; then
-    bashio::log.info "Bootstrapping ${MODELS_JSON} with Anthropic provider"
-    printf '{"providers":{"anthropic":%s}}' "$(anthropic_provider_json)" > "${MODELS_JSON}"
-  elif [ -n "${OPENAI_API_KEY}" ]; then
-    bashio::log.info "Bootstrapping ${MODELS_JSON} with OpenAI provider"
-    printf '{"providers":{"openai":%s}}' "$(openai_provider_json)" > "${MODELS_JSON}"
-  elif [ -n "${OPENROUTER_API_KEY}" ]; then
-    bashio::log.info "Bootstrapping ${MODELS_JSON} with OpenRouter provider"
-    printf '{"providers":{"openrouter":%s}}' "$(openrouter_provider_json)" > "${MODELS_JSON}"
-  elif [ -n "${DEEPSEEK_API_KEY}" ]; then
-    bashio::log.info "Bootstrapping ${MODELS_JSON} with DeepSeek provider"
-    printf '{"providers":{"deepseek":%s}}' "$(deepseek_provider_json)" > "${MODELS_JSON}"
-  elif [ -n "${GROQ_API_KEY}" ]; then
-    bashio::log.info "Bootstrapping ${MODELS_JSON} with Groq provider"
-    printf '{"providers":{"groq":%s}}' "$(groq_provider_json)" > "${MODELS_JSON}"
-  elif [ -n "${MINIMAX_API_KEY}" ]; then
-    bashio::log.info "Bootstrapping ${MODELS_JSON} with MiniMax provider"
-    printf '{"providers":{"minimax":%s}}' "$(minimax_provider_json)" > "${MODELS_JSON}"
+# --- Timezone ---
+# Debian base image defaults to UTC, which makes session-log timestamps and
+# video-pipeline SRT cues awkward for anyone not in UTC. If left empty we
+# keep the base image default; setting a value writes /etc/timezone AND
+# exports TZ (needed for Node.js which reads TZ from process.env not the file).
+TZ_VALUE="$(bashio::config 'timezone' '')"
+if [ -n "${TZ_VALUE}" ] && [ "${TZ_VALUE}" != "null" ]; then
+  if [ -f "/usr/share/zoneinfo/${TZ_VALUE}" ]; then
+    ln -sf "/usr/share/zoneinfo/${TZ_VALUE}" /etc/localtime
+    echo "${TZ_VALUE}" > /etc/timezone
+    export TZ="${TZ_VALUE}"
+    bashio::log.info "Timezone set to ${TZ_VALUE}"
+  else
+    bashio::log.warning "timezone '${TZ_VALUE}' not found in /usr/share/zoneinfo — falling back to UTC"
   fi
 fi
 
-# --- Idempotently add every configured provider that's missing ---
-# User edits survive: we only add if the key is missing from the file. If
-# they've renamed / removed a provider deliberately, we honor that.
-maybe_add_provider() {
-  local key="$1" name="$2" writer="$3"
-  [ -z "${key}" ] && return 0
-  if jq -e ".providers.${name}" "${MODELS_JSON}" > /dev/null 2>&1; then
-    return 0
+# --- Reset video tools ---
+# One-shot maintenance: nuke the video-tools sentinel + venv + Playwright
+# browser cache so video-tools-init re-installs from scratch on the next
+# boot. Auto-toggles the option back to false via the Supervisor API once
+# executed so users don't get stuck in a 720MB-redownload-every-restart loop.
+if bashio::config.true 'reset_video_tools'; then
+  bashio::log.warning "reset_video_tools=true — clearing venv + playwright-cache + sentinel"
+  rm -rf \
+    "${DATA_DIR}/.video-tools-installed" \
+    "${DATA_DIR}/venv" \
+    "${DATA_DIR}/playwright-cache"
+  if [ -n "${SUPERVISOR_TOKEN}" ]; then
+    if curl -sSL --max-time 5 -o /dev/null -w '%{http_code}' \
+        -X POST \
+        -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d '{"options": {"reset_video_tools": false}}' \
+        http://supervisor/addons/self/options 2>/dev/null | grep -q '^200$'; then
+      bashio::log.info "reset_video_tools auto-reverted to false"
+    else
+      bashio::log.warning "Could not auto-revert reset_video_tools — turn it OFF manually to avoid re-clearing next boot"
+    fi
   fi
-  bashio::log.info "Adding ${name} provider to models.json"
-  local tmp
-  tmp="$(mktemp)"
-  jq --argjson p "$(${writer})" ".providers.${name} = \$p" "${MODELS_JSON}" > "${tmp}"
-  mv "${tmp}" "${MODELS_JSON}"
-}
+fi
 
-maybe_add_provider "${MINIMAX_API_KEY}"    "minimax"    "minimax_provider_json"
-maybe_add_provider "${OPENAI_API_KEY}"     "openai"     "openai_provider_json"
-maybe_add_provider "${OPENROUTER_API_KEY}" "openrouter" "openrouter_provider_json"
-maybe_add_provider "${ANTHROPIC_API_KEY}"  "anthropic"  "anthropic_provider_json"
-maybe_add_provider "${DEEPSEEK_API_KEY}"   "deepseek"   "deepseek_provider_json"
-maybe_add_provider "${GROQ_API_KEY}"       "groq"       "groq_provider_json"
-
-# --- Per-provider startup self-check ---
-# Cheap curl each configured provider once. Non-fatal — the UI should always
-# boot so the user can fix bad keys. 401/403 = key wrong, 402/429 = auth OK
-# but out of credits or rate-limited (chat may still work briefly).
-check_provider() {
-  local name="$1" url="$2" key="$3" model="$4"
-  [ -z "${key}" ] && return 0
-  bashio::log.info "Checking ${name} provider reachability..."
-  local code
-  code=$(curl -sSL --max-time 10 -o /dev/null -w '%{http_code}' \
-    -X POST -H "Authorization: Bearer ${key}" \
-    -H "Content-Type: application/json" \
-    -d "{\"model\":\"${model}\",\"messages\":[{\"role\":\"user\",\"content\":\"1\"}],\"max_tokens\":1}" \
-    "${url}" 2>/dev/null || echo 000)
-  case "${code}" in
-    200)         bashio::log.info    "${name} provider OK (HTTP 200)" ;;
-    401|403)     bashio::log.warning "${name} auth failed (HTTP ${code}) — fix key in Configuration tab" ;;
-    402|429)     bashio::log.warning "${name} auth OK but limited (HTTP ${code}) — out of credits / rate-limited" ;;
-    000)         bashio::log.warning "${name} unreachable — network / DNS issue" ;;
-    *)           bashio::log.warning "${name} returned HTTP ${code} — chat may fail until fixed" ;;
-  esac
-}
-
-# Anthropic doesn't accept Bearer auth — needs its own x-api-key + anthropic-version
-# header. Its `messages` API also refuses `max_tokens=1` on non-Haiku models, so
-# use Haiku for the probe (cheapest + universally allowed).
-check_anthropic() {
-  [ -z "${ANTHROPIC_API_KEY}" ] && return 0
-  bashio::log.info "Checking Anthropic provider reachability..."
-  local code
-  code=$(curl -sSL --max-time 10 -o /dev/null -w '%{http_code}' \
-    -X POST \
-    -H "x-api-key: ${ANTHROPIC_API_KEY}" \
-    -H "anthropic-version: 2023-06-01" \
-    -H "Content-Type: application/json" \
-    -d '{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"1"}]}' \
-    "https://api.anthropic.com/v1/messages" 2>/dev/null || echo 000)
-  case "${code}" in
-    200)         bashio::log.info    "Anthropic provider OK (HTTP 200)" ;;
-    401|403)     bashio::log.warning "Anthropic auth failed (HTTP ${code}) — fix key in Configuration tab" ;;
-    402|429)     bashio::log.warning "Anthropic auth OK but limited (HTTP ${code}) — out of credits / rate-limited" ;;
-    000)         bashio::log.warning "Anthropic unreachable — network / DNS issue" ;;
-    *)           bashio::log.warning "Anthropic returned HTTP ${code} — chat may fail until fixed" ;;
-  esac
-}
-
-check_provider   "GLM"        "https://open.bigmodel.cn/api/paas/v4/chat/completions" "${GLM_API_KEY}"        "glm-4.6"
-check_provider   "MiniMax"    "https://api.minimax.io/v1/chat/completions"            "${MINIMAX_API_KEY}"    "MiniMax-M3"
-check_provider   "OpenAI"     "https://api.openai.com/v1/chat/completions"            "${OPENAI_API_KEY}"     "gpt-4o-mini"
-check_provider   "OpenRouter" "https://openrouter.ai/api/v1/chat/completions"         "${OPENROUTER_API_KEY}" "openai/gpt-4o-mini"
-check_provider   "DeepSeek"   "https://api.deepseek.com/v1/chat/completions"          "${DEEPSEEK_API_KEY}"   "deepseek-chat"
-check_provider   "Groq"       "https://api.groq.com/openai/v1/chat/completions"       "${GROQ_API_KEY}"       "llama-3.3-70b-versatile"
-check_anthropic
+# --- Environment variable escape hatch ---
+# Advanced users can inject arbitrary KEY=VALUE pairs (proxy config, provider
+# base-URL overrides, Playwright download mirrors, etc.) without waiting for
+# a new dedicated option. Names must be POSIX-safe: [A-Za-z_][A-Za-z0-9_]*.
+# Reject anything else early with a warning so a typo doesn't cause a silent
+# `export` failure that would crash the whole `set -e` script.
+if bashio::config.has_value 'env_vars'; then
+  ENV_VARS_COUNT="$(bashio::config 'env_vars | length')"
+  for i in $(seq 0 $((ENV_VARS_COUNT - 1))); do
+    ev_name="$(bashio::config "env_vars[${i}].name")"
+    ev_value="$(bashio::config "env_vars[${i}].value")"
+    if [[ ! "${ev_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      bashio::log.warning "env_vars[${i}]: skipping invalid name '${ev_name}' (must match [A-Za-z_][A-Za-z0-9_]*)"
+      continue
+    fi
+    export "${ev_name}=${ev_value}"
+    bashio::log.info "env_vars: exported ${ev_name}"
+  done
+fi
 
 # --- Runtime env for pi-web ---
-export GLM_API_KEY
-export MINIMAX_API_KEY
-export OPENAI_API_KEY
-export OPENROUTER_API_KEY
-export ANTHROPIC_API_KEY
-export DEEPSEEK_API_KEY
-export GROQ_API_KEY
 export PI_CODING_AGENT_DIR="${DATA_DIR}"
 export PI_WEB_HOSTNAME="0.0.0.0"
 export PI_WEB_NO_OPEN=1

@@ -1,7 +1,7 @@
 name: Woow HA Pi Agent
-version: "0.12.0"
+version: "0.13.0"
 slug: woow_ha_pi_agent
-description: pi-web + pi coding agent SDK, pre-wired to GLM / MiniMax / OpenAI / OpenRouter / Anthropic / DeepSeek / Groq (BYOK) + video pipeline (ffmpeg / Playwright / edge-tts / rclone)
+description: pi-web + pi coding agent SDK (AI providers now configured inside pi-web UI) + video pipeline (ffmpeg / Playwright / edge-tts / rclone)
 url: https://github.com/WOOWTECH/Woow_ha_pi_agent_add_on
 hassio_api: true
 arch:
@@ -34,20 +34,19 @@ panel_icon: mdi:robot
 panel_title: Pi Agent
 panel_admin: true
 watchdog: "http://[HOST]:[PORT:30142]/api/home"
+# v0.13.0: AI provider keys moved from HA UI to pi-web. This addon page now
+# holds only container-level knobs (log level, timezone, video-tools reset,
+# env var escape hatch). See CHANGELOG for migration notes.
 options:
-  api_key: ""
-  minimax_api_key: ""
-  openai_api_key: ""
-  openrouter_api_key: ""
-  anthropic_api_key: ""
-  deepseek_api_key: ""
-  groq_api_key: ""
+  log_level: info
+  timezone: ""
+  reset_video_tools: false
+  env_vars: []
 schema:
-  api_key: password?
-  minimax_api_key: password?
-  openai_api_key: password?
-  openrouter_api_key: password?
-  anthropic_api_key: password?
-  deepseek_api_key: password?
-  groq_api_key: password?
+  log_level: list(error|warn|info|debug)
+  timezone: str?
+  reset_video_tools: bool
+  env_vars:
+    - name: str
+      value: str
 image: ghcr.io/woowtech/woow-ha-pi-agent-{arch}

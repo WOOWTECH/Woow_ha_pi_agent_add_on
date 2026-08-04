@@ -5,8 +5,8 @@
 <h1 align="center">Woow HA Pi Agent 附加元件</h1>
 
 <p align="center">
-  <b>將 <a href="https://github.com/agegr/pi-web">pi-web</a> 工作區打包成 Home Assistant Supervisor 附加元件，內建 7 家推理服務。</b><br/>
-  <sub>GLM · MiniMax · OpenAI · OpenRouter · Anthropic · DeepSeek · Groq — BYOK，全部可選，最少啟用一家即可。</sub>
+  <b>將 <a href="https://github.com/agegr/pi-web">pi-web</a> 工作區打包成 Home Assistant Supervisor 附加元件，內建完整 <code>pitch_video</code> 影片產線。</b><br/>
+  <sub>AI 服務（GLM · MiniMax · OpenAI · OpenRouter · Anthropic · DeepSeek · Groq · …）在 <b>pi-web UI 內</b> 設定 —— 不用改 HA 設定，不用重啟。</sub>
 </p>
 
 <p align="center">
@@ -36,13 +36,13 @@
 
 ## 概觀
 
-**Woow HA Pi Agent** 是單一個 Home Assistant Supervisor 附加元件，內建 [`@agegr/pi-web`](https://www.npmjs.com/package/@agegr/pi-web) —— [pi coding agent](https://github.com/earendil-works/pi) 的瀏覽器工作區 —— 並預先接上七家推理服務。安裝一次、貼上金鑰，全 HA 管理員即可在側欄開啟，每個 session 自由挑選模型。
+**Woow HA Pi Agent** 是單一個 Home Assistant Supervisor 附加元件，內建 [`@agegr/pi-web`](https://www.npmjs.com/package/@agegr/pi-web) —— [pi coding agent](https://github.com/earendil-works/pi) 的瀏覽器工作區 —— 加上完整影片產線。安裝一次、開側欄圖示、在 pi-web 內加你要的 provider，全 HA 管理員即可在每個 session 自由挑模型。
 
 - **零開埠安裝。** UI 走 HA Ingress，不需動 LAN 或防火牆。
-- **BYOK、並列比對。** GLM-4.6、Claude Opus 4.7、Groq Llama 可在同一介面切換比較。
-- **狀態隨升級保留。** Session、models.json、skill worktree 全部落在 `/data/pi-agent/`，隨 HA 快照備份。
+- **BYOK 在 pi-web 內管理。** 從 Models 面板新增 provider —— 不用重啟附加元件、不用改 HA 設定。v0.13.0 之後，附加元件設定頁只剩容器層旋鈕（log level、時區、影片工具重置、環境變數逃生門）。
+- **狀態隨升級保留。** Session、models.json、skill worktree、provider 金鑰全部落在 `/data/pi-agent/`，隨 HA 快照備份。
 - **內建 skill store。** UI 直接從 GitHub URL、`owner/repo` 或本地路徑安裝技能（v0.12.0 已把 `git`+`openssh-client` 打進映像檔）。
-- **影片產線。** ffmpeg + Playwright + edge-tts + rclone 全部預裝，可直接跑 `pitch_video` 工作流（v0.11.0）。
+- **影片產線。** ffmpeg + Playwright + edge-tts + rclone 全部預裝，可直接跑 `pitch_video` 工作流（v0.11.0）。設定頁有一鍵重下工具（v0.13.0）。
 - **Watchdog。** Supervisor 探測 `/api/home`，卡死自動重啟。
 
 ## 快速上手
@@ -51,14 +51,16 @@
 |---:|---|
 | 1 | **設定 → 附加元件 → 附加元件商店 → ⋮ → 儲存庫** |
 | 2 | 加入 `https://github.com/WOOWTECH/Woow_ha_pi_agent_add_on`，安裝 **Woow HA Pi Agent** |
-| 3 | 開啟 **設定** 頁，貼上 **至少一家** 服務的 API 金鑰後儲存 |
-| 4 | **啟動** 後，從 HA 側欄的 **Pi Agent** 進入（僅管理員可見） |
+| 3 | **啟動** —— 設定頁保持預設即可，也可自行調 `log_level` / `timezone` |
+| 4 | 從 HA 側欄的 **Pi Agent** 進入（僅管理員可見） → **Models** 面板 → 新增 provider 貼上金鑰 |
 
-新安裝約 10 秒後就能在側欄看到入口。詳細各家服務說明請看 [`DOCS.md`](DOCS.md)。
+新安裝約 10 秒後就能在側欄看到入口。詳細設定選項說明請看 [`DOCS.md`](DOCS.md)。
 
 ## 功能總覽
 
-### 服務目錄（v0.12.0）
+### 服務目錄（在 pi-web 內管理）
+
+附加元件不再釘服務清單 —— 全部從 pi-web **Models** 面板動態新增，持久化到 `/data/pi-agent/models.json`。團隊常並列比對的幾家：
 
 | 服務 | API 模式 | 代表模型 | 為什麼 |
 |---|---|---|---|
@@ -70,16 +72,17 @@
 | **DeepSeek direct** | `openai-completions` | `deepseek-chat` · `deepseek-reasoner`（R1） | 比 OpenRouter 便宜；R1 原生 thinking tokens 完整 |
 | **Groq** | `openai-completions` | `llama-3.3-70b-versatile` · `kimi-k2-instruct` | LPU 服務（約 500 tok/s）、便宜快速草稿層 |
 
-只有設定過金鑰的服務會啟用。開機自檢會對每一家設定過的服務發一次 `max_tokens=1` 探測，並逐行輸出 `HTTP 200 / 401 / 402 / 429 / 000` 到 Logs 頁 —— 壞金鑰在幾秒內就能被抓到，不必等第一次聊天。
+用 Models 面板的 **Test** 按鈕驗證每家新加的 provider —— v0.13.0 起附加元件已移除開機自檢（連 api_key 選項一起拿掉）。
 
 ### 執行與運維
 
 - **In-process SDK。** `pi-web` 直接 import `@earendil-works/pi-coding-agent`，單一 Node 行程處理 UI + 推理。
 - **HA Ingress + 側欄自動啟用。** 不公開任何 port；首次開機自動 POST Supervisor API 開啟側欄圖示（v0.8.0 修正）。
 - **s6-overlay supervisor。** `nginx`（前端）+ `pi-web`（後端）+ `video-tools-init`（oneshot）。
-- **冪等 seed。** `models.json` 後續開機以 `jq` 合併新加入的 provider；使用者的手動編輯永遠優先保留。
+- **Models 在 pi-web 內管理。** `/data/pi-agent/models.json` 由 pi-web UI 直接寫入，新增／改名／換金鑰都不用重啟附加元件。
 - **Worktree 永續化。** `HOME=/data/pi-agent/home`，`pi-cwd-*/` 與已安裝的 skill 都能撐過映像檔升級（v0.10.0）。
 - **冷備份策略。** `backup_exclude` 排除可重建的 cache（`playwright-cache/`、`venv/`、`**/clips/**`、`**/segments/**`），快照保持精簡；`rclone.conf` 留在快照內，還原後 Google Drive token 仍可用。
+- **影片工具可自癒。** `reset_video_tools` 開關會在下次開機清掉 Python venv + Playwright cache，執行完自動透過 Supervisor API 撥回 `false` —— 不會卡在每次開機重下的迴圈（v0.13.0）。
 
 ## 架構
 
@@ -142,12 +145,12 @@ flowchart TD
     Skip --> Longrun["長駐服務"]
     Sentinel --> Longrun
     Longrun --> Nginx["nginx service<br/>（port 30142）"]
-    Longrun --> PiWeb["pi-web service<br/>exec 2>&amp;1<br/>逐 provider 自檢<br/>POST ingress_panel=true<br/>exec pi-web"]
+    Longrun --> PiWeb["pi-web service<br/>exec 2>&amp;1<br/>套用 log_level / TZ<br/>reset_video_tools（一次性）<br/>export env_vars<br/>POST ingress_panel=true<br/>exec pi-web"]
     Nginx --> Ready(["watchdog OK<br/>UI 上線"])
     PiWeb --> Ready
 ```
 
-完整架構寫在：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。目前部屬（v0.12.0）逐檔紀錄：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。k3s 版本設計藍圖：[`docs/K3S_BLUEPRINT.md`](docs/K3S_BLUEPRINT.md)。
+完整架構寫在：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。逐檔部屬紀錄：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。k3s 版本設計藍圖：[`docs/K3S_BLUEPRINT.md`](docs/K3S_BLUEPRINT.md)。
 
 ## 畫面截圖
 
@@ -159,7 +162,7 @@ flowchart TD
 |:---:|:---:|
 | **側欄圖示（僅管理員）。** `panel_admin: true` 鎖住這個入口，每次開機透過 Supervisor API 自動啟用 —— 新安裝不必去找「顯示於側欄」開關。 | **附加元件 Info 頁。** 顯示版本、主機名稱、「Open Web UI」按鈕（Ingress 路由）以及標準 Supervisor 控制項。 |
 | ![HA 附加元件設定](docs/screenshots/ha_addon_config.png) | ![HA 附加元件日誌](docs/screenshots/ha_addon_logs.png) |
-| **設定頁。** 7 個 `password?` 欄位全可選。空欄位 = 該服務略過。至少要有一把金鑰，否則附加元件會拒絕啟動（會在 log 留一行 fatal）。 | **Logs 頁。** 逐 provider 自檢輸出（`HTTP 200 / 401 / 402 / 429 / 000`）—— 壞金鑰幾秒內出現，不必等第一次聊天。 |
+| **設定頁（v0.13.0）。** 只留容器層旋鈕：`log_level` 單選、`timezone`（IANA）、`reset_video_tools` 一次性開關、`env_vars` 巢狀清單。AI provider 金鑰改到 pi-web Models 面板管理。 | **Logs 頁。** bashio 與 pi-web（Next.js pino）日誌交錯輸出；設定頁的 `LOG_LEVEL` 同時控制兩者的詳細度。 |
 
 ### pi-web 工作區
 
@@ -175,29 +178,24 @@ flowchart TD
 
 ## 設定
 
-| 選項 | 必填 | 說明 |
-|---|---|---|
-| `api_key` | 否† | GLM 金鑰，取自 `open.bigmodel.cn` |
-| `minimax_api_key` | 否† | MiniMax 金鑰，取自 `api.minimax.io` |
-| `openai_api_key` | 否† | OpenAI 金鑰，取自 `platform.openai.com` |
-| `openrouter_api_key` | 否† | OpenRouter 金鑰，取自 `openrouter.ai` |
-| `anthropic_api_key` | 否† | Anthropic 金鑰，取自 `console.anthropic.com` |
-| `deepseek_api_key` | 否† | DeepSeek 金鑰，取自 `platform.deepseek.com` |
-| `groq_api_key` | 否† | Groq 金鑰，取自 `console.groq.com` |
+附加元件設定頁只有 **容器層旋鈕**（v0.13.0）。所有 AI 相關設定改到 pi-web Models 面板。
 
-† **至少要有一把**。schema 都宣告為 `password?`，HA 會當作 secret 存放，不會在 UI 明文顯示。
+| 選項 | 型別 | 預設 | 說明 |
+|---|---|---|---|
+| `log_level` | `error` \| `warn` \| `info` \| `debug` | `info` | 同時控制 bashio（啟動 / init）與 pi-web（Next.js pino logger）的輸出詳細度。排查影片管線或 Playwright 問題時切 `debug`；要清靜切 `warn` |
+| `timezone` | 字串（可空） | 空 = UTC | IANA 名稱（例如 `Asia/Taipei`、`America/New_York`）。會寫 `/etc/timezone`、symlink `/etc/localtime`、export `TZ`（Node.js 讀的是 env 不是檔）。影響 addon 日誌時戳、session 記錄檔名、影片管線 SRT 字幕時序 |
+| `reset_video_tools` | bool | `false` | 一次性：下次開機清 `venv` + `playwright-cache` + sentinel，強制 `video-tools-init` 重下約 720MB 工具。**執行完自動透過 Supervisor API 撥回 `false`** —— 不用怕忘了手動關 |
+| `env_vars` | `{name, value}` 清單 | `[]` | 進階逃生門 —— 每一筆會變成 `KEY=VALUE` 塞進 pi-web 行程（proxy 設定、provider baseURL 覆寫、Playwright 下載鏡像等）。`name` 必須符合 `^[A-Za-z_][A-Za-z0-9_]*$`，否則會跳過並在 log 留警告。**不要**在這裡放 AI provider 金鑰 |
 
-### 首次開機 bootstrap
+### AI provider 金鑰放在哪
 
-`/data/pi-agent/models.json` 會依下列 provider 優先順序，用第一個有金鑰的當作 seed：
+v0.13.0 起附加元件不再保留任何 provider API 金鑰。改到 **Pi Agent**（側欄）→ **Models** 面板管理 —— pi-web 擁有 `/data/pi-agent/models.json` 與自己的加密金鑰儲存，金鑰隨附加元件升級保留，也被 HA 快照包含。
 
-`GLM → Anthropic → OpenAI → OpenRouter → DeepSeek → Groq → MiniMax`
-
-後續開機若又補上其他 provider 金鑰，會透過冪等 `jq` 合併進去 —— **使用者的手改優先**（改模型名、刪 provider、加 custom 條目全部保留）。只有把整份 `models.json` 刪掉，才會重新觸發 seed。
-
-參考設定範例放在 [`examples/models/`](examples/models/)：
+參考 model 設定範例放在 [`examples/models/`](examples/models/)：
 - [`glm-only.json`](examples/models/glm-only.json) —— 最小的 GLM-4.6（附 `thinkingFormat: "zai"`）
 - [`multi-provider.json`](examples/models/multi-provider.json) —— 完整 5 家 provider 版型
+
+想要起手範本，可以把任一份複製到 `/data/pi-agent/models.json`，之後從 Models 面板繼續編輯。
 
 ## Skills 技能系統
 
@@ -256,7 +254,8 @@ Base：`ghcr.io/hassio-addons/debian-base:9.1.0`。
 | HA Ingress | 只有經 HA 驗證的使用者才能打到 `/api/hassio_ingress/<token>/*` | HA session cookie |
 | 側欄圖示 | 僅管理員（`panel_admin: true`） | HA admin 角色 |
 | `X-Ingress-Path` | 進 body-rewrite 前先過白名單（`^/api/hassio_ingress/[A-Za-z0-9_-]{16,128}$`） | 對抗上游 proxy 設定錯誤的縱深防禦 |
-| API 金鑰 | 存在 `/data/options.json`（Supervisor 管理）；宣告為 `password?`；透過 `$*_API_KEY` env 傳給 pi | HA 主機檔案系統 |
+| API 金鑰 | 存在 pi-web 內（`/data/pi-agent/` 底下，被 HA 快照涵蓋）。v0.13.0 起附加元件 `options.json` 不再保留任何 AI 金鑰 | HA 主機檔案系統 |
+| `env_vars` 逃生門 | 值會原字串塞進 pi-web 行程，**內容不驗證**。只有 `name` 有 regex 驗證 | 視同 `/data/options.json` —— 不要放你不敢丟進 `/data/options.json` 的秘密 |
 | pi-web 應用層驗證 | **沒有。** 存取控制交給 HA。 | 有 HA admin 權限 = 完整 pi-web 權限 |
 | `rclone.conf` | 留在 HA 快照內（跟 cache 不同），還原後 Drive token 仍可用 | HA 備份加密 |
 
@@ -264,23 +263,24 @@ Base：`ghcr.io/hassio-addons/debian-base:9.1.0`。
 
 ## 測試
 
-- **開機自檢** —— 每個設定過的 provider 都以 `max_tokens=1` 探測一次，結果逐行寫進 log。
+- **pi-web 內的 provider Test 按鈕** —— 用 Models 面板隨時對任一 provider 發探測（v0.13.0 取代原本的開機自檢）。
 - **HA Supervisor watchdog** —— 週期性探測 `http://[HOST]:[PORT:30142]/api/home`，卡死自動重啟。
-- **End-to-end 驗證節奏。** 每個 tag 出前跑：(a) 全新安裝 → 側欄圖示可見 → 第一次聊天成功；(b) Skills → 從 GitHub URL 加 skill → skill 出現在 `<available_skills>`；(c) `pitch_video` dry-run 過 `python video/verify.py`。錄下來的 fixture 放在 [`tests/`](tests/)。
+- **End-to-end 驗證節奏。** 每個 tag 出前跑：(a) 全新安裝 → 側欄圖示可見 → 在 pi-web 內加 provider → 第一次聊天成功；(b) Skills → 從 GitHub URL 加 skill → skill 出現在 `<available_skills>`；(c) `pitch_video` dry-run 過 `python video/verify.py`。錄下來的 fixture 放在 [`tests/`](tests/)。
 
 ## 疑難排解
 
 | 症狀 | 原因 / 修法 |
 |---|---|
-| 附加元件無法啟動，log 說「No provider key configured」 | 打開設定頁，貼上至少一把金鑰後儲存再啟動 |
-| UI 上線但每次聊天都 `401 身份验证失败` | 金鑰錯了。從 Logs 頁看逐 provider 自檢那行，找出是哪家 —— 換掉那家的金鑰 |
+| 升級後設定頁沒有 api_key 欄位 | 這是預期行為 —— v0.13.0 把金鑰搬進 pi-web。從側欄圖示 → **Models** 面板管理 provider |
+| UI 上線但每次聊天都 `401` | provider 金鑰錯了。打開 pi-web **Models** 面板 → 編輯該 provider → 貼新金鑰 → 按 **Test**。不用重啟附加元件 |
 | 聊天返回 `402` / `429` | 驗證成功但沒額度 / 被限流。儲值或從 Models 下拉切另一家 |
 | 「Open Web UI」按鈕 404 | `ha core restart`；ingress token 偶爾需要 Supervisor 重新登錄 panel |
 | iframe 空白、network 顯示 `/_next/...` 404 | nginx sub_filter 或 shim 出問題。`ha addons logs b9cf5676_woow_ha_pi_agent` 抓 nginx error；確認 request 上有 `X-Ingress-Path` |
 | 全新安裝找不到側欄圖示 | 從 Info 頁手動切「顯示於側欄」開關（慢速 Supervisor 上，那個 POST 偶爾會 race） |
 | Skills → Add 失敗 `spawn git ENOENT` | v0.12.0 之前的 image。升到 ≥0.12.0 —— `git` + `openssh-client` 現在都在 image 裡 |
 | 附加元件升級後 worktree 不見 | v0.10.0 之後不該發生。若從 ≤v0.9.1 升上來，舊 worktree 原本在 ephemeral rootfs —— 這次請在 `HOME=/data/pi-agent/home` 底下重建 |
-| 影片產線跑到一半失敗 | `rm /data/pi-agent/.video-tools-installed`，再重啟附加元件 —— `video-tools-init` 會重下 venv + Chromium |
+| 影片產線跑到一半失敗 | 設定頁把 `reset_video_tools` 切成 `true` → 重啟附加元件 → `video-tools-init` 會重下 venv + Chromium（會自動撥回 off） |
+| 日誌時戳時區不對 | 設定頁把 `timezone` 設成 `Asia/Taipei`（或你的 IANA 名稱），重啟附加元件 |
 
 完整排障清單看 [`DOCS.md`](DOCS.md#troubleshooting)。
 
@@ -294,7 +294,8 @@ Woow_ha_pi_agent_add_on/
 ├── build.yaml               Multi-arch build args
 ├── Dockerfile               Debian base → Node 22 → ffmpeg/rclone → pi-web 釘版
 ├── DOCS.md                  HA 附加元件 info 頁顯示的使用者文件
-├── CHANGELOG.md             每個 release，含 rationale（0.1.0 → 0.12.0）
+├── CHANGELOG.md             每個 release，含 rationale（0.1.0 → 0.13.0）
+├── translations/            HA 附加元件 UI 翻譯（en、zh-tw）
 ├── README.md                英文版
 ├── README_zh-TW.md          本檔
 ├── repository.yaml          HA add-on 儲存庫 manifest
@@ -322,8 +323,8 @@ Woow_ha_pi_agent_add_on/
 docker buildx build \
   --build-arg BUILD_FROM=ghcr.io/hassio-addons/debian-base-amd64:9.1.0 \
   --build-arg BUILD_ARCH=amd64 \
-  --build-arg BUILD_VERSION=0.12.0-dev \
-  -t local/woow-ha-pi-agent-amd64:0.12.0-dev .
+  --build-arg BUILD_VERSION=0.13.0-dev \
+  -t local/woow-ha-pi-agent-amd64:0.13.0-dev .
 ```
 
 ### 升 pi-web
