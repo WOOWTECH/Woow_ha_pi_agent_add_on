@@ -9,22 +9,36 @@ exec 2>&1
 DATA_DIR=/data/pi-agent
 mkdir -p "${DATA_DIR}/sessions" "${DATA_DIR}/home"
 
-# --- Auto-enable sidebar panel ---
-# Every user who installs this addon wants the sidebar entry; making them
-# hunt for the toggle in Info tab is pure friction. Runs on every boot and
-# is a no-op once already enabled.
-if [ -n "${SUPERVISOR_TOKEN}" ]; then
+# Wrap the "POST to Supervisor to mutate our own addon options" call — used
+# to auto-enable the sidebar panel AND to auto-revert reset_video_tools.
+# Both callers need identical retry / timeout / auth-header shape and log
+# on the same 200-only success criterion, so extract to keep them in sync.
+# Args: 1=JSON body, 2=success log, 3=failure log.
+supervisor_options_post() {
+  local body="$1" success_msg="$2" failure_msg="$3"
+  [ -z "${SUPERVISOR_TOKEN}" ] && { bashio::log.warning "${failure_msg} (no SUPERVISOR_TOKEN)"; return 1; }
   if curl -sSL --max-time 5 -o /dev/null -w '%{http_code}' \
       -X POST \
       -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
       -H "Content-Type: application/json" \
-      -d '{"ingress_panel": true}' \
+      -d "${body}" \
       http://supervisor/addons/self/options 2>/dev/null | grep -q '^200$'; then
-    bashio::log.info "Sidebar panel enabled via Supervisor API"
+    bashio::log.info "${success_msg}"
   else
-    bashio::log.warning "Could not auto-enable sidebar — toggle 'Show in sidebar' manually if it's missing"
+    bashio::log.warning "${failure_msg}"
+    return 1
   fi
-fi
+}
+
+# --- Auto-enable sidebar panel ---
+# Every user who installs this addon wants the sidebar entry; making them
+# hunt for the toggle in Info tab is pure friction. Runs on every boot and
+# is a no-op once already enabled.
+supervisor_options_post \
+  '{"ingress_panel": true}' \
+  "Sidebar panel enabled via Supervisor API" \
+  "Could not auto-enable sidebar — toggle 'Show in sidebar' manually if it's missing" \
+  || true
 
 # --- Log level ---
 # Applied to bashio (this script + video-tools-init) AND exported as LOG_LEVEL
@@ -39,8 +53,8 @@ export LOG_LEVEL
 # video-pipeline SRT cues awkward for anyone not in UTC. If left empty we
 # keep the base image default; setting a value writes /etc/timezone AND
 # exports TZ (needed for Node.js which reads TZ from process.env not the file).
-TZ_VALUE="$(bashio::config 'timezone' '')"
-if [ -n "${TZ_VALUE}" ] && [ "${TZ_VALUE}" != "null" ]; then
+if bashio::config.has_value 'timezone'; then
+  TZ_VALUE="$(bashio::config 'timezone')"
   if [ -f "/usr/share/zoneinfo/${TZ_VALUE}" ]; then
     ln -sf "/usr/share/zoneinfo/${TZ_VALUE}" /etc/localtime
     echo "${TZ_VALUE}" > /etc/timezone
@@ -62,18 +76,11 @@ if bashio::config.true 'reset_video_tools'; then
     "${DATA_DIR}/.video-tools-installed" \
     "${DATA_DIR}/venv" \
     "${DATA_DIR}/playwright-cache"
-  if [ -n "${SUPERVISOR_TOKEN}" ]; then
-    if curl -sSL --max-time 5 -o /dev/null -w '%{http_code}' \
-        -X POST \
-        -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-        -H "Content-Type: application/json" \
-        -d '{"options": {"reset_video_tools": false}}' \
-        http://supervisor/addons/self/options 2>/dev/null | grep -q '^200$'; then
-      bashio::log.info "reset_video_tools auto-reverted to false"
-    else
-      bashio::log.warning "Could not auto-revert reset_video_tools — turn it OFF manually to avoid re-clearing next boot"
-    fi
-  fi
+  supervisor_options_post \
+    '{"options": {"reset_video_tools": false}}' \
+    "reset_video_tools auto-reverted to false" \
+    "Could not auto-revert reset_video_tools — turn it OFF manually to avoid re-clearing next boot" \
+    || true
 fi
 
 # --- Environment variable escape hatch ---

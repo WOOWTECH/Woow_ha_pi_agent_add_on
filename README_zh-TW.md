@@ -189,13 +189,11 @@ flowchart TD
 
 ### AI provider 金鑰放在哪
 
-v0.13.0 起附加元件不再保留任何 provider API 金鑰。改到 **Pi Agent**（側欄）→ **Models** 面板管理 —— pi-web 擁有 `/data/pi-agent/models.json` 與自己的加密金鑰儲存，金鑰隨附加元件升級保留，也被 HA 快照包含。
+v0.13.0 起附加元件不再保留任何 provider API 金鑰。改到 **Pi Agent**（側欄）→ **Models** 面板管理 —— pi-web 擁有 `/data/pi-agent/models.json` 與自己的金鑰儲存，金鑰隨附加元件升級保留，也被 HA 快照包含。
 
-參考 model 設定範例放在 [`examples/models/`](examples/models/)：
+[`examples/models/`](examples/models/) 只保留設定檔形狀的文件範例，**不要**直接複製到 `/data/pi-agent/`。請透過 Models 面板加 provider，讓 pi-web 的寫入路徑保持權威：
 - [`glm-only.json`](examples/models/glm-only.json) —— 最小的 GLM-4.6（附 `thinkingFormat: "zai"`）
 - [`multi-provider.json`](examples/models/multi-provider.json) —— 完整 5 家 provider 版型
-
-想要起手範本，可以把任一份複製到 `/data/pi-agent/models.json`，之後從 Models 面板繼續編輯。
 
 ## Skills 技能系統
 

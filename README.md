@@ -189,13 +189,11 @@ The addon settings page holds **container-level knobs only** (v0.13.0). Everythi
 
 ### Where AI provider keys live
 
-Since v0.13.0 the addon no longer holds any provider API keys. Manage them from **Pi Agent** (sidebar) → **Models** panel — pi-web owns `/data/pi-agent/models.json` and its own encrypted key storage. Keys persist across addon updates and are covered by HA snapshot backups.
+Since v0.13.0 the addon no longer holds any provider API keys. Manage them from **Pi Agent** (sidebar) → **Models** panel — pi-web owns `/data/pi-agent/models.json` and its own key storage. Keys persist across addon updates and are covered by HA snapshot backups.
 
-Reference model configs live in [`examples/models/`](examples/models/):
+Reference model configs are kept in [`examples/models/`](examples/models/) as documentation of the file shape only — do not hand-copy them into `/data/pi-agent/`. Add providers through the Models panel so pi-web's write path stays authoritative:
 - [`glm-only.json`](examples/models/glm-only.json) — minimal GLM-4.6 setup with `thinkingFormat: "zai"`
 - [`multi-provider.json`](examples/models/multi-provider.json) — full 5-provider layout
-
-Copy either into `/data/pi-agent/models.json` for a starting point, then edit inside the Models panel.
 
 ## Skills System
 
