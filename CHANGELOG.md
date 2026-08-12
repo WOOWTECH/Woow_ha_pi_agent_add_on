@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.1
+
+- **Fix 413 Request Entity Too Large on image uploads from tablet / browser.** `rootfs/etc/nginx/nginx.conf` was missing `client_max_body_size`, so the ingress sidecar nginx fell back to its 1 MB default and rejected every image / attachment above ~1 MB with an HTML 413 (which was easy to mistake for a HAOS-ingress limit because the sidecar's own `sub_filter '</head>' '<script>...'` runs on the error page and inserts the `__INGRESS_PATH__` shim into the response body). Added `client_max_body_size 100M;` inside the `http { }` block, matching the 100 MB total / 25 MB per-file caps already enforced in pi-web's `/api/files/[...path]/route.ts`. Direct proof: `POST http://127.0.0.1:30142/` with a 2 MB body now returns 200 (was 413). No other changes.
+
 ## 0.13.0
 
 - **BREAKING: AI provider API keys moved out of the addon Configuration tab into the pi-web UI.** The seven `password?` fields (`api_key`, `minimax_api_key`, `openai_api_key`, `openrouter_api_key`, `anthropic_api_key`, `deepseek_api_key`, `groq_api_key`) are gone. pi-web now owns provider configuration end-to-end via its own Models panel. Rationale: two places (HA options + pi-web UI) were racing to write `/data/pi-agent/models.json`, and pi-web's UI is where users actually think about model selection. **Migration**: after upgrade, open pi-web and re-enter each key inside the Models panel. Old `/data/pi-agent/models.json` is left in place (env-var placeholders like `"$GLM_API_KEY"` will resolve to empty strings and every chat will 401 until keys are re-entered — this is the expected transition state). No auto-migration; hard cut.
