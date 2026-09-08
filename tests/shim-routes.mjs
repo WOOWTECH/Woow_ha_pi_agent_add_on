@@ -50,7 +50,18 @@ g.URL = URL;
 g.history = { pushState(){}, replaceState(){} };
 g.Element = { prototype: { setAttribute(){} } };
 g.HTMLLinkElement = undefined; g.HTMLScriptElement = undefined; g.HTMLImageElement = undefined;
-Object.defineProperty(g, "navigator", { value: {}, configurable: true, writable: true });
+// A serviceWorker container that mimics Home Assistant's: HA registers its own
+// worker at scope "/" on the SAME origin the ingress iframe lives on, so every
+// one of these accessors would otherwise hand pi-web *HA's* worker.
+const haWorker = { scope: "/", pushManager: { subscribe: async () => ({ endpoint: "ha" }) } };
+const swContainer = {
+  register: async () => haWorker,
+  getRegistration: async () => haWorker,
+  getRegistrations: async () => [haWorker],
+  ready: Promise.resolve(haWorker),
+  controller: haWorker,
+};
+Object.defineProperty(g, "navigator", { value: { serviceWorker: swContainer }, configurable: true, writable: true });
 
 // nginx substitutes $safe_ingress_path at serve time; do the same here.
 const js = extractShim().replace(
@@ -107,6 +118,39 @@ console.log("\n=== XMLHttpRequest ===");
 calls.xhr.length = 0;
 const x = new g.XMLHttpRequest(); g.XMLHttpRequest.prototype.open.call(x, "POST", "/api/terminal");
 console.log(`  (open called with) ${calls.xhr[0] ?? "<none>"}`);
+
+console.log("\n=== service worker neutralisation ===");
+// Regression guard for the v0.14.1 fix. pi-web 0.9.0 added push code that calls
+// navigator.serviceWorker.getRegistration(); the v0.14.0 shim only replaced
+// register(), so that call returned Home Assistant's own service worker and
+// pi-web subscribed its VAPID key to it. Every accessor that can hand out a
+// real registration must be neutralised, not just register().
+const swChecks = [
+  ["register() resolves a stub, not HA's worker", async () => {
+    const r = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    return !!r && r !== haWorker && !r.pushManager;
+  }],
+  ["getRegistration() resolves undefined", async () => {
+    return (await navigator.serviceWorker.getRegistration()) === undefined;
+  }],
+  ["getRegistrations() resolves empty", async () => {
+    const r = await navigator.serviceWorker.getRegistrations();
+    return Array.isArray(r) && r.length === 0;
+  }],
+  ["controller is null", async () => navigator.serviceWorker.controller === null],
+  ["ready does not resolve to HA's worker", async () => {
+    const raced = await Promise.race([
+      navigator.serviceWorker.ready.then(() => "resolved"),
+      new Promise((res) => setTimeout(() => res("pending"), 50)),
+    ]);
+    return raced === "pending";
+  }],
+];
+for (const [name, fn] of swChecks) {
+  const ok = await fn();
+  ok ? pass++ : fail++;
+  console.log(`  ${ok ? "PASS" : "FAIL"}  ${name}`);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

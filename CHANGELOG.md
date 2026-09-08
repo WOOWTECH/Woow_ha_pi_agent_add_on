@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.14.1
+
+- **Fix: the UI showed the correct screen and then turned into a Home Assistant 404 about a second later.** Introduced by 0.14.0 (pi-web 0.9.0); 0.13.2 was unaffected.
+
+  Root cause. The add-on runs in an iframe on the Home Assistant origin, and **Home Assistant registers its own service worker at scope `/` on that same origin** (`GET /service_worker.js` -> 200, `hass_frontend/service_worker.js`). pi-web 0.9.0 added push-notification code that reaches for a service worker registration. The v0.14.0 ingress shim replaced only `navigator.serviceWorker.register()` — it did **not** replace `getRegistration()`, `getRegistrations()`, `ready` or `controller`. So pi-web's push code called `getRegistration()`, got **Home Assistant's** worker back, and subscribed its own VAPID key to it.
+
+  Evidence, measured on the live box rather than inferred: the add-on's own nginx logged **zero** 404s (so the 404 was never served by the add-on), while the same log showed `GET /api/push/config` -> 200 followed by `POST /api/push/subscribe` -> 200 — and a push subscription can only succeed against a *real* registration, of which the only one on that origin is Home Assistant's. The 0.8.4 -> 0.9.0 delta confirms the trigger: `pushManager` appears **0** times in the 0.8.4 client bundle and **2** times in 0.9.0 (`serviceWorker` goes 2 -> 6). 0.8.4 also registered a worker, but the old shim's `register()` stub was enough to contain it; 0.9.0's push path goes around that stub.
+
+  Fix: `rootfs/etc/nginx/nginx.conf` now neutralises the whole `ServiceWorkerContainer` surface — `register`, `getRegistration`, `getRegistrations`, `ready` (a promise that never settles) and `controller` (null) — so pi-web cleanly concludes there is no service worker and skips the push path instead of latching onto Home Assistant's.
+
+  **This is add-on specific.** The Podman and k3s packages serve pi-web at the root of their own origin, where registering a worker at scope `/` is correct behaviour; only the add-on is a guest on another application's origin.
+
+  **Note for anyone who ran 0.14.0:** your Home Assistant push subscription may have been overwritten while 0.14.0 was installed. If HA notifications stopped arriving, re-enable them in Home Assistant.
+
+- **`tests/shim-routes.mjs` now covers the service-worker surface.** The harness stubs a Home-Assistant-like worker registered at scope `/` and asserts every accessor is neutralised. Verified to discriminate rather than merely pass: against the v0.14.0 shim it reports **4 failures** (`getRegistration`, `getRegistrations`, `controller`, `ready`); against 0.14.1, **24 passed, 0 failed**.
+
 ## 0.14.0
 
 - **Upgrade to pi-web 0.9.0** (from 0.8.4) and the pi coding agent 0.85.1 (from 0.83.0).
