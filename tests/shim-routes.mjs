@@ -45,7 +45,13 @@ function ES(u){ calls.eventsource.push(String(u)); }
 g.EventSource = ES;
 g.XMLHttpRequest = function(){}; 
 g.XMLHttpRequest.prototype.open = function(m,u){ calls.xhr.push(String(u)); };
-g.Request = class { constructor(u,i){ this.url=u; Object.assign(this,i);} };
+g.Request = class {
+  constructor(u, init) {
+    if (init && typeof init === "object") { const { url, ...rest } = init; Object.assign(this, rest); }
+    this.url = String(u && u.url !== undefined ? u.url : u);
+  }
+  toString() { return this.url; }
+};
 g.URL = URL;
 g.history = { pushState(){}, replaceState(){} };
 g.Element = { prototype: { setAttribute(){} } };
@@ -142,6 +148,28 @@ for (const [input, expected, note] of slashCases) {
   ok ? pass++ : fail++;
   console.log(`  ${ok ? "PASS" : "FAIL"}  ${note}`);
   if (!ok) console.log(`        in  ${input}\n        exp ${expected}\n        got ${got}`);
+}
+
+console.log("\n=== fetch argument shapes (the v0.14.2 miss) ===");
+// v0.14.2 applied FS() only when fetch was called with a STRING. Next.js's RSC
+// fetch builds `new URL(href, location.origin)` and hands fetch a URL OBJECT,
+// so the one request that actually breaks the page went unrepaired and the
+// deployed fix changed nothing. Every argument shape must be covered.
+const shapeCases = [
+  ["string", () => PREFIX + "?_rsc=QLBdCDjfp"],
+  ["URL object", () => new URL(location.origin + PREFIX + "?_rsc=QLBdCDjfp")],
+  ["Request object", () => new g.Request(PREFIX + "?_rsc=QLBdCDjfp")],
+];
+for (const [name, make] of shapeCases) {
+  calls.fetch.length = 0;
+  g.fetch(make());
+  const got = String(calls.fetch[0] ?? "");
+  // Accept either the absolute or the origin-relative form; what matters is
+  // that the slash after the ingress token is present.
+  const ok = got.includes(PREFIX + "/?_rsc=");
+  ok ? pass++ : fail++;
+  console.log(`  ${ok ? "PASS" : "FAIL"}  fetch(${name}) keeps the slash`);
+  if (!ok) console.log(`        got ${got}`);
 }
 
 console.log("\n=== service worker neutralisation ===");

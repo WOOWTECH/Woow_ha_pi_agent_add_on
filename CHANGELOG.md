@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.14.3
+
+- **Fix: 0.14.2's slash repair never ran on the request that breaks the page.** The diagnosis in 0.14.2 was right and is unchanged; the patch was applied in only one of three places.
+
+  `FS()` was wired into `window.fetch` only on the branch that handles a **string** argument. Next.js's RSC fetch builds its URL as `new URL(href, location.origin)` and hands `fetch` a **URL object**, so the one request that 404s the page went through the untouched branch. Everything else the app fetches *is* a string, which is why `/api/sessions`, `/api/home`, `/api/models` and the rest were correctly prefixed while the page still died — the shim looked like it was working.
+
+  Confirmed on the live box after deploying 0.14.2, from the browser's own network log:
+
+  ```
+  GET /api/hassio_ingress/<token>?_rsc=QLBdCDjfpGkLRHBX   404   <- RSC prefetch, no slash
+  GET /api/hassio_ingress/<token>                         404   <- hard navigation, page dies
+  ```
+
+  `FS()` now runs on all three argument shapes (string, `URL`, `Request`).
+
+- **Independently confirmed that this can only be fixed client-side.** Measured against HA Core directly from the box: the slash-less URL returns `404` and the add-on's own log does not move (102 lines before, 102 after), while the same URL with the slash reaches the add-on. Core rejects the request before the Supervisor or the add-on ever sees it, so no amount of nginx configuration in this add-on can repair it — only the browser can, before the request leaves.
+
+- **`tests/shim-routes.mjs` covers the argument shapes.** Verified to discriminate: against the 0.14.2 shim the URL-object and Request-object cases fail (the string case passes, exactly matching the deployed behaviour); against 0.14.3, **32 passed, 0 failed**. A stub bug was fixed along the way — the fake `Request` copied `init.url` over the repaired URL, which the real constructor does not do and which produced one false failure.
+
 ## 0.14.2
 
 - **Fix (the real one): the UI rendered correctly and then became a Home Assistant `404: Not Found` about a second later.** Introduced by 0.14.0; 0.13.2 was unaffected. **0.14.1 did not fix this** — see the note below.
