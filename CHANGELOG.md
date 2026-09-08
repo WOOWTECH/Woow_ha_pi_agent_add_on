@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.14.2
+
+- **Fix (the real one): the UI rendered correctly and then became a Home Assistant `404: Not Found` about a second later.** Introduced by 0.14.0; 0.13.2 was unaffected. **0.14.1 did not fix this** — see the note below.
+
+  Root cause, reproduced end to end with a real browser against the live ingress URL. Next.js App Router fires an RSC prefetch ~0.5-1 s after hydration, and builds that URL from the canonical pathname with the **trailing slash normalised off**:
+
+  ```
+  GET /api/hassio_ingress/<token>?_rsc=QLBdCDjfpGkLRHBX     <- no slash after the token
+  ```
+
+  Home Assistant Core routes ingress as `/api/hassio_ingress/{token}/{path}`. With no slash the route does not match, so **HA Core returns 404 before the Supervisor or this add-on ever sees the request** — which is exactly why the add-on's own nginx log stayed clean while the user saw a 404. Next.js then takes its failure path (`"Error occurred during navigation, falling back to hard navigation"`) and hard-navigates the document to that same slash-less URL, so the whole page turns into `404: Not Found`.
+
+  Verified on the box: HA Core direct with the trailing slash -> `200`; without it -> `404: Not Found`; without it plus `?_rsc=` (the exact browser URL) -> `404`. Repairing that single request re-inserted the slash and the app loaded and stayed up.
+
+  The shim was passing it through because of its own "already prefixed, leave it alone" early-out (`if (p.indexOf("/api/hassio_ingress/") === 0) return false`), added to prevent double-prefixing. The slash-less URL starts with the prefix, so it matched that guard. The shim never removed the slash — Next.js did — but the shim is the only layer that can put it back, because HA Core rejects the request before anything downstream runs. `FS()` now re-inserts it for the bare prefix, prefix + query and prefix + fragment, at every entry point (fetch / EventSource / XHR / pushState / replaceState).
+
+- **Fix: `/provider-icons.svg` escaped the ingress prefix.** The client renders `<use href="/provider-icons.svg#...">` for provider logos, and that path was not in the shim's allowlist, so it went to HA Core and 404'd. Found by code inspection, not observed in a trace — it only renders in provider-model UI the first screen does not reach, so it broke icons, not the page. Added to the allowlist.
+
+- **`tests/shim-routes.mjs` covers both.** Checked for discriminating power rather than assumed: against the 0.14.1 shim the trailing-slash block fails all three of its cases, including the exact failing RSC prefetch URL; against 0.14.2, **29 passed, 0 failed**.
+
+### Note on 0.14.1
+
+0.14.1 was released against a **wrong diagnosis**. It attributed the 404 to pi-web 0.9.0's new push code obtaining Home Assistant's own service worker through `navigator.serviceWorker.getRegistration()`, which the 0.14.0 shim did not stub. Browser traces later showed `/sw.js` was never requested and no service worker was ever registered, so that was not the cause of this bug. The hardening 0.14.1 added is kept — stubbing the whole `ServiceWorkerContainer` surface rather than only `register()` is still correct for an add-on that is a guest on another application's origin — but it fixed nothing user-visible. Upgrade straight to 0.14.2.
+
 ## 0.14.1
 
 - **Fix: the UI showed the correct screen and then turned into a Home Assistant 404 about a second later.** Introduced by 0.14.0 (pi-web 0.9.0); 0.13.2 was unaffected.

@@ -119,6 +119,31 @@ calls.xhr.length = 0;
 const x = new g.XMLHttpRequest(); g.XMLHttpRequest.prototype.open.call(x, "POST", "/api/terminal");
 console.log(`  (open called with) ${calls.xhr[0] ?? "<none>"}`);
 
+console.log("\n=== trailing slash on the ingress prefix (the v0.14.1 404) ===");
+// Next.js App Router builds its RSC prefetch URL from the canonical pathname with
+// the trailing slash normalised OFF, producing "<prefix>?_rsc=...". HA Core routes
+// /api/hassio_ingress/{token}/{path} and does not match without that slash, so Core
+// 404s the prefetch; Next then hard-navigates to the same slash-less URL and the
+// whole page becomes "404: Not Found" about a second after it rendered correctly.
+// The shim used to pass these through untouched because of its "already prefixed,
+// leave alone" early-out. Reproduced live against the box, then fixed here.
+const slashCases = [
+  [PREFIX,                       PREFIX + "/",                  "bare prefix, no slash"],
+  [PREFIX + "?_rsc=QLBdCDjfp",   PREFIX + "/?_rsc=QLBdCDjfp",   "RSC prefetch (the actual failing request)"],
+  [PREFIX + "#frag",             PREFIX + "/#frag",             "prefix + fragment"],
+  [PREFIX + "/",                 PREFIX + "/",                  "already correct, must not double"],
+  [PREFIX + "/api/home",         PREFIX + "/api/home",          "normal prefixed path untouched"],
+];
+for (const [input, expected, note] of slashCases) {
+  calls.fetch.length = 0;
+  g.fetch(input);
+  const got = calls.fetch[0];
+  const ok = got === expected;
+  ok ? pass++ : fail++;
+  console.log(`  ${ok ? "PASS" : "FAIL"}  ${note}`);
+  if (!ok) console.log(`        in  ${input}\n        exp ${expected}\n        got ${got}`);
+}
+
 console.log("\n=== service worker neutralisation ===");
 // Regression guard for the v0.14.1 fix. pi-web 0.9.0 added push code that calls
 // navigator.serviceWorker.getRegistration(); the v0.14.0 shim only replaced
