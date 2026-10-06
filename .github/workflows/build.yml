@@ -1,30 +1,10 @@
 name: Build & Publish add-on image
-
-on:
-  push:
-    branches: [main]
-    tags: ["v*"]
-    paths:
-      - config.yaml
-      - build.yaml
-      - Dockerfile
-      - rootfs/**
-      - .github/workflows/build.yml
-  workflow_dispatch:
-    inputs:
-      push:
-        description: Push image to GHCR (false = build-only sanity check)
-        type: boolean
-        default: true
-
 permissions:
   contents: read
   packages: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   build:
     name: Build (${{ matrix.arch }})
@@ -33,56 +13,109 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - arch: amd64
-            platform: linux/amd64
-          - arch: aarch64
-            platform: linux/arm64
+        - arch: amd64
+          platform: linux/amd64
+        - arch: aarch64
+          platform: linux/arm64
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Read add-on metadata
+      id: meta
+      run: "{\n  echo \"name=$(yq '.name' config.yaml)\"\n  echo \"description=$(yq '.description' config.yaml)\"\n  echo\
+        \ \"version=$(yq '.version' config.yaml)\"\n  echo \"base_image=$(yq '.build_from.${{ matrix.arch }}' build.yaml)\"\
+        \n} >> \"$GITHUB_OUTPUT\"\n"
+    - name: Checkout pinned distribution tooling
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        repository: WOOWTECH/Woow_HA_App_Store
+        ref: 26bb83db3b28db67c33b13350f3be6cddc880527
+        path: .sync-tooling
+        sparse-checkout: .addon-sync
+        persist-credentials: false
+    - name: Install immutable-image guard dependencies
+      run: python3 -m pip install -r .sync-tooling/.addon-sync/requirements.txt
+    - name: Reuse existing version without overwriting its image
+      id: existing
+      if: github.event_name != 'workflow_dispatch' || inputs.push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        ADDON_VERSION: ${{ steps.meta.outputs.version }}
+        ADDON_ARCH: ${{ matrix.arch }}
+      run: python3 .sync-tooling/.addon-sync/pi_image_reuse.py --arch "$ADDON_ARCH" --version "$ADDON_VERSION"
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      if: steps.existing.outputs.reuse != 'true'
+    - name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+      if: steps.existing.outputs.reuse != 'true'
+    - name: Log in to GHCR
+      if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push)
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build & push
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: ${{ matrix.platform }}
+        push: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push) }}
+        provenance: false
+        tags: 'ghcr.io/woowtech/woow-ha-pi-agent-${{ matrix.arch }}:${{ steps.meta.outputs.version }}
 
-      - name: Read add-on metadata
-        id: meta
-        run: |
-          {
-            echo "name=$(yq '.name' config.yaml)"
-            echo "description=$(yq '.description' config.yaml)"
-            echo "version=$(yq '.version' config.yaml)"
-            echo "base_image=$(yq '.build_from.${{ matrix.arch }}' build.yaml)"
-          } >> "$GITHUB_OUTPUT"
+          ghcr.io/woowtech/woow-ha-pi-agent-${{ matrix.arch }}:latest
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+          '
+        build-args: 'BUILD_FROM=${{ steps.meta.outputs.base_image }}
 
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+          BUILD_ARCH=${{ matrix.arch }}
 
-      - name: Log in to GHCR
-        if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_VERSION=${{ steps.meta.outputs.version }}
 
-      - name: Build & push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          push: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push) }}
-          provenance: false
-          tags: |
-            ghcr.io/woowtech/woow-ha-pi-agent-${{ matrix.arch }}:${{ steps.meta.outputs.version }}
-            ghcr.io/woowtech/woow-ha-pi-agent-${{ matrix.arch }}:latest
-          build-args: |
-            BUILD_FROM=${{ steps.meta.outputs.base_image }}
-            BUILD_ARCH=${{ matrix.arch }}
-            BUILD_VERSION=${{ steps.meta.outputs.version }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
-            BUILD_DESCRIPTION=${{ steps.meta.outputs.description }}
-            BUILD_NAME=${{ steps.meta.outputs.name }}
-            BUILD_REF=${{ github.sha }}
-            BUILD_REPOSITORY=${{ github.repository }}
-          cache-from: type=gha,scope=${{ matrix.arch }}
-          cache-to: type=gha,scope=${{ matrix.arch }},mode=max
+          BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+
+          BUILD_DESCRIPTION=${{ steps.meta.outputs.description }}
+
+          BUILD_NAME=${{ steps.meta.outputs.name }}
+
+          BUILD_REF=${{ github.sha }}
+
+          BUILD_REPOSITORY=${{ github.repository }}
+
+          '
+        cache-from: type=gha,scope=${{ matrix.arch }}
+        cache-to: type=gha,scope=${{ matrix.arch }},mode=max
+      if: steps.existing.outputs.reuse != 'true'
+    needs:
+    - test
+  test:
+    name: Ingress shim regression and patch syntax
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+    - run: 'node tests/shim-routes.mjs
+
+        for file in patches/*.mjs; do node --check "$file"; done'
+'on':
+  push:
+    branches:
+    - main
+    tags:
+    - v*
+    paths:
+    - config.yaml
+    - build.yaml
+    - Dockerfile
+    - rootfs/**
+    - .github/workflows/build.yml
+    - patches/**
+    - tests/**
+    - .dockerignore
+  workflow_dispatch:
+    inputs:
+      push:
+        description: Push image to GHCR (false = build-only sanity check)
+        type: boolean
+        default: true
