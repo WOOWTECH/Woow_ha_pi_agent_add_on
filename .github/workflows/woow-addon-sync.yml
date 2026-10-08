@@ -22,21 +22,4 @@ jobs:
     if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion ==
       'success' && github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.event != 'pull_request_target'
       && github.event.workflow_run.head_repository.full_name == github.repository))
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      with:
-        repository: WOOWTECH/Woow_HA_App_Store
-        ref: 26bb83db3b28db67c33b13350f3be6cddc880527
-        path: tooling
-        sparse-checkout: .addon-sync
-        persist-credentials: false
-    - name: Install pinned validation dependencies
-      run: python3 -m pip install -r tooling/.addon-sync/requirements.txt
-    - name: Validate synchronization guards
-      run: python3 tooling/.addon-sync/test_addon_sync.py -v
-    - name: Publish immutable source notification
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: python3 tooling/.addon-sync/addon_sync.py publish --registry tooling/.addon-sync/registry.json --apply
+    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-publish.yml@main
