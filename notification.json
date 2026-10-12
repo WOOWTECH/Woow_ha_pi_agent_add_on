@@ -7,11 +7,11 @@
       "name": "Woow HA Pi Agent",
       "version": "0.14.3",
       "repository": "WOOWTECH/Woow_ha_pi_agent_add_on",
-      "source_sha": "eaefb3cea4a70232b233e3ad550231e3c3897d91",
+      "source_sha": "d5e7ddf1b474aae18c10ffab5fea9c69542fb0e6",
       "source_path": ".",
       "config_file": "config.yaml",
       "config_sha256": "sha256:4e1be98d89eac2f82de8d6b568adce4537ca368a74655488b1ca6a3bf0cd519c",
-      "archive_sha256": "sha256:4ac04c1ca7630c28b05046662a92a2f55bc8459dfe8c550b7c382216534f10a5",
+      "archive_sha256": "sha256:f8644628c945632db1ff320a86a7b8de0c35336ece9b7e46774dc7e14e93341a",
       "context_fingerprint": "sha256:d2d77a81bdd707d882b18a4d9cec3e649cb18ac759714f7e9df4f4f9fe015b7f",
       "material_fingerprint": "sha256:71fb0ccc4b91c94dae91eed85939f4be2150328bda7be9e597064a52055c873c",
       "architectures": [
@@ -95,7 +95,7 @@
       },
       "delivery": "published-image",
       "validation": "manifest+architecture-images+configured-CI",
-      "publisher_run_id": "37409695823",
+      "publisher_run_id": "38209698202",
       "channel": "stable"
     }
   }
