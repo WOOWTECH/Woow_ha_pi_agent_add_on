@@ -69,8 +69,19 @@ RUN apt-get update \
 #   - /api/agent/running/events and /api/auth/all-providers were REMOVED
 #     upstream. Nothing in this add-on references either by name; the shim
 #     matches on the /api/ prefix, not a route list.
-ARG PI_WEB_VERSION=0.9.0
+ARG PI_WEB_VERSION=0.12.0
 RUN npm install -g --omit=dev --prefix=/opt/piweb "@agegr/pi-web@${PI_WEB_VERSION}" \
+    && rm -rf /tmp/npm-cache
+
+# Reproducible, architecture-aware system CLIs. User-scoped binaries in the
+# persistent HOME take precedence at runtime, so existing/custom installs are
+# left untouched while fresh installations have both commands available.
+COPY cli-runtime/ /opt/pi-clis/
+RUN npm ci --omit=dev --prefix=/opt/pi-clis \
+    && claude_bin=/opt/pi-clis/node_modules/.bin/claude \
+    && codex_bin=/opt/pi-clis/node_modules/.bin/codex \
+    && "$claude_bin" --version | grep -q '^2.1.296' \
+    && "$codex_bin" --version | grep -q '0.162.1' \
     && rm -rf /tmp/npm-cache
 
 # node-gyp can fail in ways npm does not treat as fatal, and a missing
@@ -113,11 +124,18 @@ RUN set -euo pipefail; \
     mapfile -d '' FILES < <(find /opt/piweb/lib/node_modules/@agegr/pi-web \
       -path '*@earendil-works/*/dist/*/tools/path-utils.js' -print0); \
     echo "[patch] found ${#FILES[@]} path-utils.js copies"; \
-    if [ "${#FILES[@]}" -lt 2 ]; then \
-      echo "[patch] FAIL: expected at least 2 copies, found ${#FILES[@]}" >&2; \
+    if [ "${#FILES[@]}" -lt 1 ]; then \
+      echo "[patch] FAIL: expected at least 1 copy, found ${#FILES[@]}" >&2; \
       exit 1; \
     fi; \
-    node /opt/patches/fix-unicode-space-paths.mjs "${FILES[@]}"
+    node /opt/patches/fix-unicode-space-paths.mjs "${FILES[@]}" \
+    && node --test /opt/patches/tests/chatgpt-device-id.test.mjs \
+    && PI_WEB_ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web node /opt/patches/tests/device-id-live.mjs \
+    && node /opt/patches/patch-chatgpt-device-id.mjs \
+       "/opt/piweb/lib/node_modules/@agegr/pi-web/.next/server/app/api/auth/login/[provider]/route.js" \
+    && node --check "/opt/piweb/lib/node_modules/@agegr/pi-web/.next/server/app/api/auth/login/[provider]/route.js" \
+    && grep -q '__piChatGPTDeviceId' \
+       "/opt/piweb/lib/node_modules/@agegr/pi-web/.next/server/app/api/auth/login/[provider]/route.js"
 
 
 # =============================================================================
@@ -191,12 +209,20 @@ RUN apt-get update \
 # and the `pi-web` bin stays a working relative symlink into lib/node_modules.
 COPY --from=piweb-builder /opt/piweb/lib/node_modules /usr/local/lib/node_modules
 COPY --from=piweb-builder /opt/piweb/bin              /usr/local/bin
+COPY --from=piweb-builder /opt/pi-clis                  /opt/pi-clis
 
 # Cross-stage assertion. Both stages derive from the same ${BUILD_FROM} and
 # install the same Node major, so this should never fire — which is exactly
 # why it is cheap to keep: if someone ever changes one base and not the other,
 # the build fails here instead of shipping a terminal that never prompts.
 RUN node -e 'const p=require("/usr/local/lib/node_modules/@agegr/pi-web/node_modules/node-pty"); if (typeof p.spawn !== "function") { throw new Error("node-pty has no spawn()"); } console.log("[build] node-pty loads under the runtime node");'
+
+
+RUN ln -s /opt/pi-clis/node_modules/.bin/claude /usr/local/bin/claude \
+    && ln -s /opt/pi-clis/node_modules/.bin/codex /usr/local/bin/codex \
+    && chmod -R a+rX,go-w /opt/pi-clis \
+    && claude --version | grep -q '^2.1.296' \
+    && codex --version | grep -q '0.162.1'
 
 COPY rootfs/ /
 
