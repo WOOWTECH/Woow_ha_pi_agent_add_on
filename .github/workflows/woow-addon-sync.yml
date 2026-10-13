@@ -23,3 +23,22 @@ jobs:
       'success' && github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.event != 'pull_request_target'
       && github.event.workflow_run.head_repository.full_name == github.repository))
     uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-publish.yml@main
+  # Ask the Store to synchronize now instead of at its next (often hours-late)
+  # schedule. Runs only when publish wrote a new notification; the Store
+  # re-validates everything, so the dispatch carries no payload.
+  notify-store:
+    needs: publish
+    if: needs.publish.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+    - name: Send woow-addon-ready to the Store
+      env:
+        GH_TOKEN: ${{ secrets.APP_STORE_DISPATCH_TOKEN }}
+      run: |
+        if [ -z "$GH_TOKEN" ]; then
+          echo "::warning title=Store not notified::APP_STORE_DISPATCH_TOKEN is not set; the Store takes this version at its next scheduled synchronization."
+          exit 0
+        fi
+        gh api --method POST repos/WOOWTECH/Woow_HA_App_Store/dispatches -f event_type=woow-addon-ready
