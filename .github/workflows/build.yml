@@ -121,6 +121,7 @@ jobs:
     - name: Ingress shim and ChatGPT OAuth patch tests
       run: |
         node --test patches/tests/chatgpt-device-id.test.mjs
+        node tests/shared-agent-state.mjs
         node --check patches/patch-chatgpt-device-id.mjs
         node tests/shim-routes.mjs
         node tests/cli-image-layers.mjs
