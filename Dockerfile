@@ -226,10 +226,12 @@ COPY --from=piweb-builder /opt/pi-clis/codex /opt/pi-clis/codex
 RUN node -e 'const p=require("/usr/local/lib/node_modules/@agegr/pi-web/node_modules/node-pty"); if (typeof p.spawn !== "function") { throw new Error("node-pty has no spawn()"); } console.log("[build] node-pty loads under the runtime node");'
 
 
-RUN ln -s /opt/pi-clis/claude/node_modules/.bin/claude /usr/local/bin/claude \
-    && ln -s /opt/pi-clis/codex/node_modules/.bin/codex /usr/local/bin/codex \
-    && claude --version | grep -q '^2.1.296' \
-    && codex --version | grep -q '0.162.1'
+# /usr/local/bin/claude and /usr/local/bin/codex are wrappers from rootfs that
+# refresh the shared Pi Web MCP/skills state and then exec these pinned
+# binaries. Check the binaries directly: running a wrapper here would write
+# shared state into the image.
+RUN /opt/pi-clis/claude/node_modules/.bin/claude --version | grep -q '^2.1.296' \
+    && /opt/pi-clis/codex/node_modules/.bin/codex --version | grep -q '0.162.1'
 
 COPY rootfs/ /
 
@@ -241,7 +243,11 @@ RUN chmod +x \
       /etc/s6-overlay/s6-rc.d/nginx/run \
       /etc/s6-overlay/scripts/video-tools-init \
       /usr/local/bin/pi \
+      /usr/local/bin/claude \
+      /usr/local/bin/codex \
       /usr/local/bin/pi-agent-share-state.mjs \
+    && sh -n /usr/local/bin/claude \
+    && sh -n /usr/local/bin/codex \
     # Fail the build rather than ship an image where `pi` resolves to nothing.
     # Upstream installs the coding agent only as a TRANSITIVE dependency of
     # pi-web, so npm never links its `pi` bin — without this launcher the CLI
