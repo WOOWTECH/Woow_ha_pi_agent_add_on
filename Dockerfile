@@ -172,7 +172,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # layers keep each new transfer bounded while retaining apt-managed packages.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates curl git gnupg jq nginx openssh-client tmux \
+       ca-certificates curl git gnupg jq nginx openssh-client tmux procps \
        python3 python3-venv python3-pip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -248,6 +248,9 @@ RUN chmod +x \
       /usr/local/bin/pi-agent-share-state.mjs \
     && sh -n /usr/local/bin/claude \
     && sh -n /usr/local/bin/codex \
+    # Codex 0.162 runs `ps` to manage its background app-server; without
+    # procps a plain `codex` exits before the sign-in screen.
+    && command -v ps \
     # Fail the build rather than ship an image where `pi` resolves to nothing.
     # Upstream installs the coding agent only as a TRANSITIVE dependency of
     # pi-web, so npm never links its `pi` bin — without this launcher the CLI

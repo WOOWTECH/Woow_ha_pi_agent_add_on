@@ -21,6 +21,9 @@ const stubDir = path.join(temp, "stubs");
 const env = { PATH: "/usr/local/bin:/usr/bin:/bin", PI_AGENT_DATA_DIR: data, PI_CODING_AGENT_DIR: data, HOME: home };
 
 assert.doesNotMatch(dockerfile, /ln -s \/opt\/pi-clis\/\w+\/node_modules\/\.bin\/\w+ \/usr\/local\/bin\//, "CLIs must not bypass the refresh wrappers");
+// Codex 0.162 invokes `ps` for its pid-managed app-server; the Debian base
+// ships without it, so a plain `codex` failed before the sign-in screen.
+assert.match(dockerfile, /apt-get install[^&]*\bprocps\b/, "runtime image installs procps for Codex");
 
 try {
   mkdirSync(stubDir, { recursive: true });

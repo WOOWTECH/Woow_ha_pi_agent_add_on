@@ -5,6 +5,7 @@
 - Retire the `~/.local/bin` launchers written by 0.14.8 and earlier; user-owned binaries there are kept and keep precedence.
 - The terminal's login shell puts `$HOME/.local/bin` back before the system bins, matching the pi-web service PATH.
 - Tolerate two CLI launches refreshing the shared skills links at the same time.
+- Fix `codex` exiting before its sign-in screen: Codex 0.162 runs `ps` to manage its background app-server, and the Debian base image had no `procps` ("failed to invoke ps for pid-managed app server"). The image now installs `procps`, as the Podman and k3s images already do.
 
 ## 0.14.8
 
