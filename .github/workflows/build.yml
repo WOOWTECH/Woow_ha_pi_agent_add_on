@@ -141,19 +141,10 @@ jobs:
     - patches/**
     - tests/**
     - .dockerignore
+  # PRs run unfiltered so the ruleset's required checks always report (release-gating #88).
   pull_request:
     branches:
     - main
-    paths:
-    - config.yaml
-    - build.yaml
-    - Dockerfile
-    - rootfs/**
-    - .github/workflows/build.yml
-    - patches/**
-    - tests/**
-    - cli-runtime/**
-    - .dockerignore
   workflow_dispatch:
     inputs:
       push:
