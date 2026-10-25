@@ -11,19 +11,31 @@ Object.assign(process.env, { HOME: path.join(temporary, 'home'), PI_CODING_AGENT
   PI_OMNIGENT_STATE_DIR: path.join(temporary, 'omnigent-plugin'), OMNIGENT_CONFIG_HOME: path.join(temporary, 'omni'),
   OMNIGENT_DATA_DIR: path.join(temporary, 'omni'), PI_OMNIGENT_SDK_ROOT: '/usr/local/lib/node_modules/@agegr/pi-web' });
 fs.mkdirSync(process.env.HOME);
+// A first-run extension must not quietly add/update engines. Discovery's
+// --version probes are allowed; package-manager mutations are recorded/fail.
+const guardDir = path.join(temporary, 'guard'); fs.mkdirSync(guardDir);
+const installAttempts = path.join(temporary, 'install-attempts');
+for (const command of ['npm', 'npx', 'uv', 'pip', 'pip3', 'curl', 'wget']) {
+  const real = process.env.PATH.split(path.delimiter).map(directory => path.join(directory, command)).find(file => fs.existsSync(file));
+  fs.writeFileSync(path.join(guardDir, command), `#!/usr/bin/env node\nimport{spawnSync}from'node:child_process';import{appendFileSync}from'node:fs';const args=process.argv.slice(2);if(args.length===1&&args[0]==='--version'){if(!${JSON.stringify(real || '')})process.exit(127);const r=spawnSync(${JSON.stringify(real || '')},args,{stdio:'inherit'});process.exit(r.status??1)}appendFileSync(${JSON.stringify(installAttempts)},${JSON.stringify(command + '\n')});process.exit(77);\n`, { mode: 0o755 });
+}
+process.env.PATH = `${guardDir}:${process.env.PATH}`;
 let child;
 try {
   const pkg = JSON.parse(fs.readFileSync(`${BUNDLE}/package.json`, 'utf8'));
   assert.equal(pkg.version, '0.3.11');
   assert.equal(JSON.parse(fs.readFileSync('/usr/local/lib/node_modules/@agegr/pi-web/package.json', 'utf8')).version, '0.12.0');
+  console.log('SMOKE: loading registered image plugin');
   seed(); const plugin = await loadPlugin(); assert.equal((await plugin.lifecycle()).active, true);
   const first = await plugin.web.ensureOnboarding(); const second = await plugin.web.ensureOnboarding();
   assert.equal(first.status, 'created'); assert.equal(second.sessionId, first.sessionId);
   const sdk = await plugin.web.loadPiSdk();
   const loader = new sdk.DefaultResourceLoader({ cwd: process.env.HOME, agentDir: temporary, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true });
+  console.log('SMOKE: loading real SDK extensions');
   await loader.reload();
   const extensions = loader.getExtensions(); assert.deepEqual(extensions.errors, []);
   assert.ok(extensions.extensions.some(extension => extension.path.includes('pi-omnigent-plugin')));
+  console.log('SMOKE: discovering preinstalled dependencies without installers');
   const installer = await import(`${BUNDLE}/src/installer.mjs`);
   const dependencies = await installer.installDependencies({ env: process.env, run: async () => { throw new Error('Unexpected runtime download'); } });
   assert.equal(dependencies.ok, true, JSON.stringify(dependencies.issues));
@@ -33,6 +45,7 @@ try {
   assert.equal(fs.existsSync(path.join(process.env.OMNIGENT_CONFIG_HOME, 'auth.json')), false);
   // Exercise the actual launcher and Pi Web 0.12 RPC contract. No model prompt
   // is submitted: the setup session must expose the plugin command by itself.
+  console.log('SMOKE: starting real Pi Web and onboarding RPC');
   child = spawn(process.execPath, ['/usr/local/lib/pi-omnigent-ha/launch.mjs'], {
     detached: true, stdio: 'ignore', cwd: process.env.HOME,
     env: { ...process.env, PI_WEB_HOSTNAME: '127.0.0.1', PI_WEB_NO_OPEN: '1', PORT: '30141',
@@ -51,6 +64,14 @@ try {
   }
   assert.equal(commandsReady, true, 'real Pi Web startup exposes Omnigent command in the setup session');
   const saved = plugin.web.readOnboarding(); assert.equal(saved.sessionId, first.sessionId);
+  console.log('SMOKE: RPC ready; waiting for offline activation receipt');
+  const bootPath = path.join(temporary, 'omnigent-plugin/boot.json');
+  for (let attempt = 0; attempt < 45 && !fs.existsSync(bootPath); attempt++) await new Promise(resolve => setTimeout(resolve, 1000));
+  assert.equal(fs.existsSync(bootPath), true, 'background activation completes offline');
+  const boot = JSON.parse(fs.readFileSync(bootPath, 'utf8'));
+  assert.equal(boot.initialization.phase, 'needs-login');
+  assert.equal(boot.startup.status, 'started');
+  assert.equal(fs.existsSync(installAttempts), false, 'no package manager or engine download during fresh activation');
   fs.writeFileSync(path.join(temporary, 'settings.json'), JSON.stringify({ packages: [{ source: BUNDLE, extensions: [] }] }));
   assert.equal((await plugin.lifecycle()).active, false);
   fs.writeFileSync(path.join(temporary, 'settings.json'), JSON.stringify({ packages: [] }));

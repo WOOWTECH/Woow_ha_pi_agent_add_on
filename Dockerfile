@@ -305,10 +305,10 @@ RUN chmod +x \
     && tmux -V
 
 # CI has no HA bridge address; check a copy with a loopback listener.
-RUN sed 's/listen 172.30.32.1:30142/listen 127.0.0.1:30142/' /etc/nginx/nginx.conf > /tmp/nginx-ci.conf \
+RUN --network=none sed 's/listen 172.30.32.1:30142/listen 127.0.0.1:30142/' /etc/nginx/nginx.conf > /tmp/nginx-ci.conf \
     && nginx -t -c /tmp/nginx-ci.conf \
     && rm /tmp/nginx-ci.conf \
-    && node /tmp/omnigent-image-smoke.mjs \
+    && timeout 300s node /tmp/omnigent-image-smoke.mjs \
     && rm /tmp/omnigent-image-smoke.mjs
 
 # SHELL is what pi-web 0.9.0's browser terminal spawns:
