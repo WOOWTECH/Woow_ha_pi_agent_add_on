@@ -44,7 +44,7 @@ try {
   assert.equal(dependencies.claude.version, '2.1.296');
   assert.equal(dependencies.codex.version, '0.162.1');
   const fallback = spawnSync('/opt/omnigent/venv/bin/python', ['-c',
-    'from pathlib import Path; import claude_agent_sdk; from claude_agent_sdk._internal.transport.subprocess_cli import SubprocessCLITransport; assert not (Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude").exists(); transport=SubprocessCLITransport("", claude_agent_sdk.ClaudeAgentOptions()); assert transport._cli_path == "/usr/local/bin/claude"; print("SDK uses pinned official Claude wrapper")'],
+    'from pathlib import Path; import claude_agent_sdk; from claude_agent_sdk._internal.transport.subprocess_cli import SubprocessCLITransport; assert not (Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude").exists(); transport=SubprocessCLITransport("", claude_agent_sdk.ClaudeAgentOptions()); assert transport._find_cli() == "/usr/local/bin/claude"; print("SDK uses pinned official Claude wrapper")'],
     { env: process.env, encoding: 'utf8', timeout: 15000 });
   assert.equal(fallback.status, 0, fallback.stderr);
   console.log('SMOKE: Claude SDK uses official CLI 2.1.296; duplicate SDK binary absent');
