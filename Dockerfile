@@ -141,6 +141,28 @@ RUN set -euo pipefail; \
        "/opt/piweb/lib/node_modules/@agegr/pi-web/.next/server/app/api/auth/login/[provider]/route.js"
 
 
+# Omnigent is built once per architecture, never downloaded on first activation.
+# Keep Python and the SDK in separate OCI layers for HA's transfer budget.
+FROM ${BUILD_FROM} AS omnigent-builder
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV UV_PYTHON_INSTALL_DIR=/opt/omnigent/python UV_NO_CACHE=1
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl python3-venv \
+    && python3 -m venv /tmp/uv \
+    && /tmp/uv/bin/pip install --no-cache-dir 'uv==0.12.10' \
+    && /tmp/uv/bin/uv python install 3.12.12 \
+    && /tmp/uv/bin/uv venv --python 3.12.12 /opt/omnigent/venv \
+    && /tmp/uv/bin/uv pip install --python /opt/omnigent/venv/bin/python 'omnigent==0.16.0' \
+    && /opt/omnigent/venv/bin/python -c 'import importlib.metadata; assert importlib.metadata.version("omnigent") == "0.16.0"'
+ARG PI_OMNIGENT_VERSION=0.3.11
+ARG PI_OMNIGENT_SHA256=4d1565e727f8b02accfab135e7e4376dd00a2448e1f212299089d3fae7e19a01
+RUN curl --fail --silent --show-error --location --retry 3 \
+      "https://github.com/WOOWTECH/pi-omnigent-plugin/releases/download/v${PI_OMNIGENT_VERSION}/woowtech-pi-omnigent-plugin-${PI_OMNIGENT_VERSION}.tgz" -o /tmp/plugin.tgz \
+    && echo "${PI_OMNIGENT_SHA256}  /tmp/plugin.tgz" | sha256sum --check --strict \
+    && mkdir -p /opt/woow/pi-omnigent-plugin \
+    && tar -xzf /tmp/plugin.tgz --strip-components=1 -C /opt/woow/pi-omnigent-plugin \
+    && chmod -R a+rX,go-w /opt/woow/pi-omnigent-plugin
+
 # =============================================================================
 # Stage 2 — the add-on image. No compiler.
 # =============================================================================
@@ -163,7 +185,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # to add this after Omnigent's native-terminal launcher (used to drive the Pi
 # harness there) turned out to shell out to `tmux` unconditionally and fail
 # without it. Not yet exercised on this add-on (no Omnigent integration
-# here today), but a runtime apt install would disappear on every Supervisor
+# before 0.15.0), but a runtime apt install would disappear on every Supervisor
 # restart anyway, so it has to be image-baked before it can matter.
 #
 # Runtime and video dependencies are installed in small independent layers.
@@ -172,7 +194,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # layers keep each new transfer bounded while retaining apt-managed packages.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates curl git gnupg jq nginx openssh-client tmux procps \
+       ca-certificates curl git gnupg jq nginx openssh-client tmux procps util-linux \
        python3 python3-venv python3-pip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -218,6 +240,15 @@ COPY --from=piweb-builder /opt/piweb/lib/node_modules /usr/local/lib/node_module
 COPY --from=piweb-builder /opt/piweb/bin              /usr/local/bin
 COPY --from=piweb-builder /opt/pi-clis/claude /opt/pi-clis/claude
 COPY --from=piweb-builder /opt/pi-clis/codex /opt/pi-clis/codex
+COPY --from=omnigent-builder /opt/omnigent/python /opt/omnigent/python
+COPY --from=omnigent-builder /opt/omnigent/venv /opt/omnigent/venv
+COPY --from=omnigent-builder /opt/woow/pi-omnigent-plugin /opt/woow/pi-omnigent-plugin
+RUN ln -s /usr/local/lib/node_modules/@agegr/pi-web/node_modules /opt/woow/pi-omnigent-plugin/node_modules \
+    && ln -s /opt/omnigent/venv/bin/omnigent /usr/local/bin/omnigent \
+    && ln -s /opt/woow/pi-omnigent-plugin/bin/cli.mjs /usr/local/bin/pi-omnigent \
+    && chmod +x /opt/woow/pi-omnigent-plugin/bin/cli.mjs \
+    && /opt/omnigent/venv/bin/omnigent --version
+
 
 # Cross-stage assertion. Both stages derive from the same ${BUILD_FROM} and
 # install the same Node major, so this should never fire — which is exactly
@@ -234,6 +265,7 @@ RUN /opt/pi-clis/claude/node_modules/.bin/claude --version | grep -q '^2.1.296' 
     && /opt/pi-clis/codex/node_modules/.bin/codex --version | grep -q '0.162.1'
 
 COPY rootfs/ /
+COPY tests/omnigent-image-smoke.mjs /tmp/omnigent-image-smoke.mjs
 
 # rootfs COPY doesn't reliably preserve +x on files created outside a POSIX
 # filesystem. Explicitly re-mark every executable we ship so s6-overlay's
@@ -264,6 +296,9 @@ RUN chmod +x \
     && test -x "$(command -v pi)" \
     && pi --version \
     && tmux -V
+
+RUN node /tmp/omnigent-image-smoke.mjs \
+    && rm /tmp/omnigent-image-smoke.mjs
 
 # SHELL is what pi-web 0.9.0's browser terminal spawns:
 #     process.env.SHELL || "/bin/sh"   with argv ["-l"]

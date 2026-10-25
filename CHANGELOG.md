@@ -1,3 +1,12 @@
+## 0.15.0
+
+- Bundle verified `pi-omnigent-plugin` 0.3.11 and Omnigent SDK 0.16.0 with Python 3.12 at image build time, for amd64 and aarch64. Startup does not download the plugin or install missing Claude/Codex/Pi engines; existing pinned image engines remain unchanged.
+- Register the image plugin once and automatically create/reuse the **Omnigent 連線設定** conversation. Fresh setup always asks for server URL, username and a masked password. Existing plugin sources, login state, native disable and removal choices survive restarts/upgrades.
+- Add an **Omnigent** entry in Pi Web opening an HA Ingress settings screen: fresh login, status, per-engine model selection, actual conversation verification, and confirmed disconnect. It uses the verified plugin backend and a private Unix socket behind the existing Supervisor-only nginx ingress; no additional TCP listener. Passwords are never included in persisted settings, logs or chat.
+- Retain Pi Web **0.12.0** and its security fixes. This HA settings screen is separate from the 0.10-only native MCP-adjacent tab; the addon does not run `install-ui` or downgrade Pi Web. The full Omnigent UI opens from the page after login for model/module selection and normal conversations.
+- Preserve session-specific `PI_CODING_AGENT_DIR` when the Pi launcher reads an inherited container environment script.
+- Add lifecycle/security/wrapper regression tests and image smoke checks that load the real Pi extension, create exactly one setup conversation, discover the preinstalled SDK, and retain removal/disable choices without a server or model call.
+
 ## 0.14.9
 
 - Fix Pi Web global MCP servers not reaching Claude Code or Codex in the browser terminal. The refresh launchers lived in `~/.local/bin`, but the terminal is a login shell whose rebuilt PATH skipped that directory, so `claude mcp list` and `codex mcp list` stayed empty until the add-on restarted. `/usr/local/bin/claude` and `/usr/local/bin/codex` are now wrappers that refresh the shared MCP/skills state before every launch, whatever PATH the caller has, then exec the pinned binaries.

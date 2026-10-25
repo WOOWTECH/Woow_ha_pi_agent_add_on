@@ -121,6 +121,8 @@ jobs:
     - name: Ingress shim and ChatGPT OAuth patch tests
       run: |
         node --test patches/tests/chatgpt-device-id.test.mjs
+        node --test tests/omnigent-ha.test.mjs
+        for file in rootfs/usr/local/lib/pi-omnigent-ha/*.mjs rootfs/usr/local/share/pi-omnigent-ha/*.js; do node --check "$file"; done
         node tests/shared-agent-state.mjs
         node tests/cli-wrappers.mjs
         node --check patches/patch-chatgpt-device-id.mjs
@@ -137,6 +139,7 @@ jobs:
     - build.yaml
     - Dockerfile
     - rootfs/**
+    - cli-runtime/**
     - .github/workflows/build.yml
     - patches/**
     - tests/**
