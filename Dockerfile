@@ -73,6 +73,13 @@ ARG PI_WEB_VERSION=0.12.0
 RUN npm install -g --omit=dev --prefix=/opt/piweb "@agegr/pi-web@${PI_WEB_VERSION}" \
     && rm -rf /tmp/npm-cache
 
+# Pi Web 0.12 pins Pi SDK 1.1, whose caret dependencies now select codemode
+# 1.4. That release removed MCP_TYPESCRIPT_PREAMBLE, breaking SDK imports
+# before the server starts. Keep the related runtime packages on SDK 1.1.
+RUN npm install --omit=dev --ignore-scripts --prefix=/opt/piweb/lib/node_modules/@agegr/pi-web \
+      @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0 \
+    && rm -rf /tmp/npm-cache
+
 # Reproducible, architecture-aware system CLIs. User-scoped binaries in the
 # persistent HOME still take precedence. Separate package locks, builder runs,
 # and final COPY instructions keep each registry layer under the host transfer
@@ -297,7 +304,8 @@ RUN chmod +x \
     && pi --version \
     && tmux -V
 
-RUN node /tmp/omnigent-image-smoke.mjs \
+RUN nginx -t \
+    && node /tmp/omnigent-image-smoke.mjs \
     && rm /tmp/omnigent-image-smoke.mjs
 
 # SHELL is what pi-web 0.9.0's browser terminal spawns:

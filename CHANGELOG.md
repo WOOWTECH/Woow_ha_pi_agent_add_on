@@ -1,5 +1,6 @@
 ## 0.15.0
 
+- Fix a newly reproduced image-build failure in Pi Web 0.12: Pi SDK 1.1's caret dependencies selected codemode 1.4, which removed `MCP_TYPESCRIPT_PREAMBLE` and prevented the SDK from importing. Pin codemode, MCP and chord to the matching 1.1.0 runtime family and keep the live SDK/OAuth import checks.
 - Bundle verified `pi-omnigent-plugin` 0.3.11 and Omnigent SDK 0.16.0 with Python 3.12 at image build time, for amd64 and aarch64. Startup does not download the plugin or install missing Claude/Codex/Pi engines; existing pinned image engines remain unchanged.
 - Register the image plugin once and automatically create/reuse the **Omnigent 連線設定** conversation. Fresh setup always asks for server URL, username and a masked password. Existing plugin sources, login state, native disable and removal choices survive restarts/upgrades.
 - Add an **Omnigent** entry in Pi Web opening an HA Ingress settings screen: fresh login, status, per-engine model selection, actual conversation verification, and confirmed disconnect. It uses the verified plugin backend and a private Unix socket behind the existing Supervisor-only nginx ingress; no additional TCP listener. Passwords are never included in persisted settings, logs or chat.
