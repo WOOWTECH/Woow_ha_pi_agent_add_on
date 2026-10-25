@@ -304,7 +304,10 @@ RUN chmod +x \
     && pi --version \
     && tmux -V
 
-RUN nginx -t \
+# CI has no HA bridge address; check a copy with a loopback listener.
+RUN sed 's/listen 172.30.32.1:30142/listen 127.0.0.1:30142/' /etc/nginx/nginx.conf > /tmp/nginx-ci.conf \
+    && nginx -t -c /tmp/nginx-ci.conf \
+    && rm /tmp/nginx-ci.conf \
     && node /tmp/omnigent-image-smoke.mjs \
     && rm /tmp/omnigent-image-smoke.mjs
 

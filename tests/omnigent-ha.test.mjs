@@ -33,7 +33,7 @@ test('disabled, git, npm and local installations are never overwritten or duplic
   const custom = path.join(f.agentDir, 'custom'); fs.mkdirSync(custom);
   fs.writeFileSync(path.join(custom, 'package.json'), JSON.stringify({ name: '@woowtech/pi-omnigent-plugin' }));
   for (const entry of [{ source: bundle, extensions: [] }, 'git:github.com/WOOWTECH/pi-omnigent-plugin@v0.3.11',
-    'npm:@woowtech/pi-omnigent-plugin@0.3.11', custom]) {
+    'git:git@github.com:WOOWTECH/pi-omnigent-plugin.git@v0.3.11', 'npm:@woowtech/pi-omnigent-plugin@0.3.11', custom]) {
     fs.rmSync(marker, { force: true }); f.write({ packages: [entry] });
     assert.equal(seed(f).seeded, false); assert.deepEqual(f.read().packages, [entry]);
   }
@@ -51,6 +51,15 @@ test('corrupt settings fail closed without marker or data loss', t => {
   const f = fixture(t); fs.writeFileSync(f.file, '{broken');
   assert.throws(() => seed(f)); assert.equal(fs.readFileSync(f.file, 'utf8'), '{broken');
   assert.equal(fs.existsSync(path.join(f.agentDir, 'omnigent-plugin/image-seed.json')), false);
+});
+test('explicit image opt-out and symlink settings remain untouched', t => {
+  const f = fixture(t);
+  assert.equal(seed({ ...f, seedEnabled: false }).reason, 'image-setup-disabled');
+  assert.equal(fs.existsSync(f.file), false);
+  const target = path.join(f.agentDir, 'user-settings.json'); fs.writeFileSync(target, '{"packages":[]}');
+  fs.symlinkSync(target, f.file); assert.throws(() => seed(f));
+  assert.equal(fs.lstatSync(f.file).isSymbolicLink(), true);
+  assert.equal(fs.readFileSync(target, 'utf8'), '{"packages":[]}');
 });
 function fakePlugin() {
   const calls = [];

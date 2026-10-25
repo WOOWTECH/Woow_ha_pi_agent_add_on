@@ -5,26 +5,34 @@ import { pathToFileURL } from 'node:url';
 export const BUNDLE = '/opt/woow/pi-omnigent-plugin';
 const NAME = '@woowtech/pi-omnigent-plugin';
 function read(file, fallback) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  try {
+    if (fs.lstatSync(file).isSymbolicLink()) throw new Error('Symlink metadata preserved');
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  }
   catch (error) { if (error.code === 'ENOENT') return fallback; throw error; }
 }
 function write(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  if (fs.existsSync(file) && fs.lstatSync(file).isSymbolicLink()) throw new Error('Symlink metadata preserved');
   const temporary = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
-  fs.renameSync(temporary, file);
+  try {
+    fs.writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
+    fs.renameSync(temporary, file);
+  } finally { fs.rmSync(temporary, { force: true }); }
 }
 function isPlugin(entry, agentDir, bundle) {
   const source = typeof entry === 'string' ? entry : entry?.source;
   if (typeof source !== 'string') return false;
-  if (source === bundle || /^(?:git:)?(?:https:\/\/)?(?:github\.com[:/])WOOWTECH\/pi-omnigent-plugin(?:\.git)?(?:@.*)?\/?$/i.test(source)
+  if (source === bundle || /(?:^|[/:])pi-omnigent-plugin(?:\.git)?(?:@[^/]*)?\/?$/i.test(source)
     || source === `npm:${NAME}` || source.startsWith(`npm:${NAME}@`)) return true;
   if (!source.includes(':')) return read(path.resolve(agentDir, source, 'package.json'), {})?.name === NAME;
   return false;
 }
 
 /** Called before Pi Web starts; settings and tombstone survive image upgrades. */
-export function seed({ agentDir = process.env.PI_CODING_AGENT_DIR, home = process.env.HOME, bundle = BUNDLE } = {}) {
+export function seed({ agentDir = process.env.PI_CODING_AGENT_DIR, home = process.env.HOME, bundle = BUNDLE,
+  seedEnabled = process.env.PI_OMNIGENT_AUTO_SETUP !== 'false' } = {}) {
+  if (!seedEnabled) return { seeded: false, reason: 'image-setup-disabled' };
   const marker = path.join(agentDir, 'omnigent-plugin/image-seed.json');
   if (fs.existsSync(marker)) return { seeded: false, reason: 'already-considered' };
   const file = path.join(agentDir, 'settings.json');

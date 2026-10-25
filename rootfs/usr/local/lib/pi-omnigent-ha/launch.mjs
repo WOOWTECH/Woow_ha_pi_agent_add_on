@@ -36,11 +36,13 @@ try {
 
 // A private Unix socket adds no host-network listener. Existing nginx peer
 // restrictions remain the browser authentication boundary.
-try { if (fs.lstatSync(socket).isSocket()) fs.unlinkSync(socket); else throw new Error('Socket path occupied'); }
-catch (error) { if (error.code !== 'ENOENT') throw error; }
 const server = createServer();
-server.listen(socket, () => fs.chmodSync(socket, 0o666));
 server.on('error', () => console.error('Omnigent settings socket unavailable.'));
+try {
+  try { if (fs.lstatSync(socket).isSocket()) fs.unlinkSync(socket); else throw new Error('Socket path occupied'); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  server.listen(socket, () => fs.chmodSync(socket, 0o666));
+} catch { console.error('Omnigent settings socket unavailable; Pi Web remains available.'); }
 // Use the pinned image runtime; never install/rebuild the plugin's Pi Web 0.10 overlay.
 child = spawn('/usr/local/bin/pi-web', process.argv.slice(2), { stdio: 'inherit', env: process.env });
 async function close() {
