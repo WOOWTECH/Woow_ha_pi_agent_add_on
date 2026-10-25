@@ -105,6 +105,9 @@ test('private HTTP bridge checks token, body, error redaction and HA prefix for 
   assert.equal((await fetch(base + '/api/omnigent')).status, 403);
   assert.equal((await fetch(base + '/api/omnigent', { headers })).status, 200);
   assert.equal((await fetch(base + '/api/omnigent', { headers: { ...headers, 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
+  assert.equal((await fetch(base + '/api/omnigent', { headers: { ...headers, 'Sec-Fetch-Site': 'same-site' } })).status, 403);
+  assert.equal((await fetch(base + '/api/omnigent', { headers: { ...headers, Origin: 'https://evil.example' } })).status, 403);
+  assert.equal((await fetch(base + '/api/omnigent', { headers: { ...headers, Origin: base, 'Sec-Fetch-Site': 'same-origin' } })).status, 200);
   for (const [body, status, contentType] of [['{secret', 400, 'application/json'], ['null', 400, 'application/json'], ['{}', 415, 'text/plain'], ['x'.repeat(8193), 413, 'application/json']]) {
     const response = await fetch(base + '/api/omnigent', { method: 'POST', headers: { ...headers, 'Content-Type': contentType }, body });
     assert.equal(response.status, status); assert.ok(!(await response.text()).includes('secret'));

@@ -153,14 +153,18 @@ RUN set -euo pipefail; \
 FROM ${BUILD_FROM} AS omnigent-builder
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV UV_PYTHON_INSTALL_DIR=/opt/omnigent/python UV_NO_CACHE=1
+COPY cli-runtime/omnigent/requirements.lock /tmp/omnigent-requirements.lock
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl python3-venv \
     && python3 -m venv /tmp/uv \
     && /tmp/uv/bin/pip install --no-cache-dir 'uv==0.12.10' \
     && /tmp/uv/bin/uv python install 3.12.12 \
     && /tmp/uv/bin/uv venv --python 3.12.12 /opt/omnigent/venv \
-    && /tmp/uv/bin/uv pip install --python /opt/omnigent/venv/bin/python 'omnigent==0.16.0' \
+    && /tmp/uv/bin/uv pip sync --python /opt/omnigent/venv/bin/python --require-hashes /tmp/omnigent-requirements.lock \
     && /opt/omnigent/venv/bin/python -c 'import importlib.metadata; assert importlib.metadata.version("omnigent") == "0.16.0"'
+# HA already ships a pinned official Claude CLI. The SDK falls back to PATH;
+# remove its duplicate binary before any runtime COPY creates an OCI layer.
+RUN /opt/omnigent/venv/bin/python -c 'from pathlib import Path; import claude_agent_sdk; p=Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude"; print("Removed duplicate Claude bytes:", p.stat().st_size if p.exists() else 0); p.unlink(missing_ok=True)'
 ARG PI_OMNIGENT_VERSION=0.3.11
 ARG PI_OMNIGENT_SHA256=4d1565e727f8b02accfab135e7e4376dd00a2448e1f212299089d3fae7e19a01
 RUN curl --fail --silent --show-error --location --retry 3 \

@@ -22,7 +22,19 @@ export function createServer({ bridge = createOmnigentBridge(), directory = stat
     try {
       const url = new URL(req.url, 'http://localhost');
       if (url.pathname === '/api/omnigent') {
-        if (req.headers['x-omnigent-token'] !== token || req.headers['sec-fetch-site'] === 'cross-site') return reply(403, { error: { code: 'UNTRUSTED_REQUEST' } });
+        const site = req.headers['sec-fetch-site'];
+        let originAllowed = true;
+        if (req.headers.origin) {
+          try {
+            const origin = new URL(req.headers.origin);
+            // TLS can terminate at HA's external proxy. Supervisor preserves
+            // the browser Host; Fetch Metadata + the private token also gate
+            // same-site/different-origin callers without trusting forwarded URLs.
+            originAllowed = ['https:', 'http:'].includes(origin.protocol) && origin.origin === req.headers.origin
+              && origin.host === req.headers.host;
+          } catch { originAllowed = false; }
+        }
+        if (!originAllowed || req.headers['x-omnigent-token'] !== token || (site && !['same-origin', 'none'].includes(site))) return reply(403, { error: { code: 'UNTRUSTED_REQUEST' } });
         if (req.method === 'GET') return reply(200, await bridge.read());
         if (req.method !== 'POST') return reply(405, { error: { code: 'METHOD_NOT_ALLOWED' } });
         if (!/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] || '')) return reply(415, { error: { code: 'JSON_REQUIRED' } });

@@ -1,5 +1,7 @@
 ## 0.15.0
 
+- Build and run image smoke tests on native amd64 and aarch64 GitHub runners, removing QEMU overhead from the ARM release path.
+- Hash-lock all 94 Omnigent runtime dependencies. Resolve/compare Linux amd64 and aarch64 locks and enforce hashes in each actual image build. Remove the SDK's duplicate bundled Claude binary; it uses the existing pinned official Claude CLI on PATH, verified by the image smoke test.
 - Fix a newly reproduced image-build failure in Pi Web 0.12: Pi SDK 1.1's caret dependencies selected codemode 1.4, which removed `MCP_TYPESCRIPT_PREAMBLE` and prevented the SDK from importing. Pin codemode, MCP and chord to the matching 1.1.0 runtime family and keep the live SDK/OAuth import checks.
 - Bundle verified `pi-omnigent-plugin` 0.3.11 and Omnigent SDK 0.16.0 with Python 3.12 at image build time, for amd64 and aarch64. Startup does not download the plugin or install missing Claude/Codex/Pi engines; existing pinned image engines remain unchanged.
 - Register the image plugin once and automatically create/reuse the **Omnigent 連線設定** conversation. Fresh setup always asks for server URL, username and a masked password. Existing plugin sources, login state, native disable and removal choices survive restarts/upgrades.

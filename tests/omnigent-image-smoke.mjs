@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { seed, loadPlugin, BUNDLE } from '/usr/local/lib/pi-omnigent-ha/lifecycle.mjs';
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'omnigent-image-smoke-'));
@@ -40,6 +40,14 @@ try {
   const dependencies = await installer.installDependencies({ env: process.env, run: async () => { throw new Error('Unexpected runtime download'); } });
   assert.equal(dependencies.ok, true, JSON.stringify(dependencies.issues));
   assert.deepEqual(dependencies.installedEngines.sort(), ['claude', 'codex', 'pi']);
+  assert.equal(dependencies.claude.path, '/usr/local/bin/claude');
+  assert.equal(dependencies.claude.version, '2.1.296');
+  assert.equal(dependencies.codex.version, '0.162.1');
+  const fallback = spawnSync('/opt/omnigent/venv/bin/python', ['-c',
+    'from pathlib import Path; import claude_agent_sdk; from claude_agent_sdk._internal.transport.subprocess_cli import SubprocessCLITransport; assert not (Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude").exists(); transport=SubprocessCLITransport("", claude_agent_sdk.ClaudeAgentOptions()); assert transport._cli_path == "/usr/local/bin/claude"; print("SDK uses pinned official Claude wrapper")'],
+    { env: process.env, encoding: 'utf8', timeout: 15000 });
+  assert.equal(fallback.status, 0, fallback.stderr);
+  console.log('SMOKE: Claude SDK uses official CLI 2.1.296; duplicate SDK binary absent');
   assert.equal(dependencies.omnigent.version, '0.16.0'); assert.equal(dependencies.changed, false);
   const current = await plugin.runtime.status(); assert.equal(current.loginConfirmed, false); assert.notEqual(current.phase, 'ready');
   assert.equal(fs.existsSync(path.join(process.env.OMNIGENT_CONFIG_HOME, 'auth.json')), false);
