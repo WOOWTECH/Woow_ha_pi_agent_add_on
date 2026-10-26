@@ -118,6 +118,29 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: 22
+    - name: Validate native settings against the official compiled Pi Web artifact
+      run: |
+        mkdir -p "$RUNNER_TEMP/pi-web-native"
+        npm pack @agegr/pi-web@0.12.0 --pack-destination "$RUNNER_TEMP/pi-web-native"
+        tar -xzf "$RUNNER_TEMP/pi-web-native/agegr-pi-web-0.12.0.tgz" -C "$RUNNER_TEMP/pi-web-native"
+        PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test patches/tests/omnigent-settings.test.mjs
+    - name: Exercise compiled native settings and Ingress fallback in Chromium
+      run: |
+        npm install --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/pi-web-native/package" \
+          @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0
+        npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/ha-browser" playwright@1.62.1
+        node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
+        node patches/patch-omnigent-settings.mjs "$RUNNER_TEMP/pi-web-native/package"
+        export PLAYWRIGHT_MODULE="$RUNNER_TEMP/ha-browser/node_modules/playwright/index.mjs"
+        PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" EVIDENCE_DIR="$RUNNER_TEMP/ha-native-evidence" node tests/omnigent-native-browser.mjs
+        node tests/omnigent-browser.mjs
+    - name: Retain native settings browser evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ha-native-settings-browser
+        path: ${{ runner.temp }}/ha-native-evidence
+        if-no-files-found: ignore
     - name: Ingress shim and ChatGPT OAuth patch tests
       run: |
         node --test patches/tests/chatgpt-device-id.test.mjs

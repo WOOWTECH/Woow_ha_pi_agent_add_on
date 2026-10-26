@@ -147,6 +147,11 @@ RUN set -euo pipefail; \
     && grep -q '__piChatGPTDeviceId' \
        "/opt/piweb/lib/node_modules/@agegr/pi-web/.next/server/app/api/auth/login/[provider]/route.js"
 
+# Keep the official compiled 0.12.0 UI and private Ingress bridge. Add Omnigent
+# to React's desktop/mobile settings navigation immediately after MCP. The
+# patch checks client + SSR artifact hashes and syntax before writing either.
+RUN node /opt/patches/patch-omnigent-settings.mjs /opt/piweb/lib/node_modules/@agegr/pi-web
+
 
 # Omnigent is built once per architecture, never downloaded on first activation.
 # Keep Python and the SDK in separate OCI layers for HA's transfer budget.
