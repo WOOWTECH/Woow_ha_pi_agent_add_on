@@ -380,13 +380,15 @@ Bundled upstream packages retain their own licenses (`@agegr/pi-web` MIT, `@eare
 
 ## Omnigent
 
-映像已包含固定的 `pi-omnigent-plugin v0.3.13`、Python 3.12 與 Omnigent SDK 0.16.0。首次啟動自動註冊插件並建立 **Omnigent 連線設定** 對話，不需先執行安裝命令。
+映像已包含固定的 `pi-omnigent-plugin v0.3.14`、Python 3.12 與 Omnigent SDK 0.16.0。首次啟動自動註冊插件並建立 **Omnigent 連線設定** 對話，不需先執行安裝命令。
 
 1. 開啟 HA 側邊欄的 Pi Agent，進入 **Settings → Omnigent**（緊接 MCP；手機從設定下拉選單選取）。右上角 **Omnigent** 及現有 HA ingress URL 後的 `/omnigent` 仍可開啟獨立設定頁，保留 `/api/hassio_ingress/<token>` 前綴。
 2. 每次全新設定都需輸入 Server URL、帳號及密碼；不內建預設 server、不沿用另一容器的登入。密碼欄位遮罩，送出／離開頁面後清空，不存於對話。
 3. 登入後查看目前已安裝引擎與模型。缺少供應商授權時，在同一 addon 的終端完成 Claude Code／Codex 官方登入，或在 Pi Web Models 設定 Pi 模型。
 4. 選擇引擎及模型後按 **驗證實際對話**。此動作才會建立測試對話並使用模型額度；全部已安裝引擎實際回覆並停止測試後才顯示 ready。
 5. 按 **開啟 Omnigent**，在服務端選擇主機、引擎、模型與模組進行一般對話。取消連線只影響此 addon；既有歷史對話保留。
+
+驗證若確認 Pi 或 Claude 主終端已消失，會提早回報 `NATIVE_TERMINAL_REMOVED`，不再等到回覆逾時。驗證回條會分開記錄清理前的終端事件與測試對話清理結果；服務端未提供退出碼時保留 `null`，不保存原始終端內容。這是診斷改善，並未修復引擎退出的根因；供應商登入、額度及模型服務問題仍需另行處理。Codex 的輔助終端不適用這項判定。
 
 此版本保留 **Pi Web 0.12.0**，原生 Omnigent 設定分頁與獨立頁使用相同的私有 bridge。切換離開分頁會卸載登入表單；在表單按 Escape 可關閉設定。請勿執行只支援 Pi Web 0.10 的 `pi-omnigent install-ui`。設定對話仍由原插件提供，登入也可使用此頁的表單。
 

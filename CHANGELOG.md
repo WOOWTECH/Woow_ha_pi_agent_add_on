@@ -1,3 +1,10 @@
+## 0.15.2
+
+- Bundle checksum-verified Omnigent plugin 0.3.14. Verification now reports `NATIVE_TERMINAL_REMOVED` when the required Pi or Claude main terminal disappears and remains absent across polls, instead of waiting for the reply timeout. A replacement terminal, successful reply or structured provider error keeps its existing handling; Codex's auxiliary terminal is excluded.
+- Keep the terminal-removal diagnostic separate from verification-session cleanup. Receipts retain only the matching resource/event, the pre-cleanup phase and an explicitly supplied numeric exit status; an unavailable exit status stays `null`. No raw terminal output is added to receipts.
+- This improves verification diagnostics; it does not fix the cause of an engine exit, provider authentication, billing or model-service failures. A real reply and successful cleanup are still required for readiness.
+- Retain the 0.15.1 native Omnigent settings UI, Pi Web 0.12.0, pinned engines, add-on options and persistent data paths. No settings migration is required for this update.
+
 ## 0.15.1
 
 - Bundle checksum-verified Omnigent plugin 0.3.13 with runtime retention, native provider-error classification and actual verification-model receipts; retain Pi Web 0.12.0 and the existing installed engines.
