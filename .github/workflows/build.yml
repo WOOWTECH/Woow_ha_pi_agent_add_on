@@ -40,7 +40,7 @@ jobs:
       run: python3 -m pip install -r .sync-tooling/.addon-sync/requirements.txt
     - name: Reuse existing version without overwriting its image
       id: existing
-      if: github.event_name != 'workflow_dispatch' || inputs.push
+      if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         ADDON_VERSION: ${{ steps.meta.outputs.version }}
@@ -143,11 +143,17 @@ jobs:
         PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test patches/tests/omnigent-settings.test.mjs
     - name: Exercise compiled native settings and Ingress fallback in Chromium
       run: |
+        sudo apt-get update && sudo apt-get install -y nginx
         npm install --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/pi-web-native/package" \
           @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0
         npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/ha-browser" playwright@1.62.1
         node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
         node patches/patch-omnigent-settings.mjs "$RUNNER_TEMP/pi-web-native/package"
+        curl -fLsS --retry 3 https://github.com/WOOWTECH/pi-paseo-plugin/releases/download/v0.1.9/woowtech-pi-paseo-0.1.9.tgz -o "$RUNNER_TEMP/paseo.tgz"
+        echo "31efd9184ec93aa6c6b4da85f235ac7570dc6f64e39195c21d6c23f8ce93fbdb  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
+        mkdir -p "$RUNNER_TEMP/pi-paseo"
+        tar -xzf "$RUNNER_TEMP/paseo.tgz" --strip-components=1 -C "$RUNNER_TEMP/pi-paseo"
+        export PASEO_PLUGIN_ROOT="$RUNNER_TEMP/pi-paseo"
         export PLAYWRIGHT_MODULE="$RUNNER_TEMP/ha-browser/node_modules/playwright/index.mjs"
         PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" EVIDENCE_DIR="$RUNNER_TEMP/ha-native-evidence" node tests/omnigent-native-browser.mjs
         node tests/omnigent-browser.mjs
@@ -161,8 +167,8 @@ jobs:
     - name: Ingress shim and ChatGPT OAuth patch tests
       run: |
         node --test patches/tests/chatgpt-device-id.test.mjs
-        node --test tests/omnigent-ha.test.mjs
-        for file in rootfs/usr/local/lib/pi-omnigent-ha/*.mjs rootfs/usr/local/share/pi-omnigent-ha/*.js; do node --check "$file"; done
+        node --test tests/omnigent-ha.test.mjs tests/paseo-ha.test.mjs
+        for file in rootfs/usr/local/lib/pi-omnigent-ha/*.mjs rootfs/usr/local/share/pi-omnigent-ha/*.js rootfs/usr/local/lib/pi-paseo-ha/*.mjs rootfs/usr/local/share/pi-paseo-ha/*.js; do node --check "$file"; done
         node tests/shared-agent-state.mjs
         node tests/cli-wrappers.mjs
         node --check patches/patch-chatgpt-device-id.mjs
