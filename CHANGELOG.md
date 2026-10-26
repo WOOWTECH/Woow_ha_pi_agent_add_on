@@ -1,3 +1,9 @@
+## 0.15.5 (candidate; release pending final plugin pin)
+
+- Open the existing unfinished Omnigent setup conversation on an untouched first homepage, including mobile and bounded cold-boot waiting.
+- Respect explicit links, remembered work, drafts and interactions, including before hydration; preserve Ingress paths and avoid navigation loops.
+- Read local plugin metadata for eligibility without runtime probes or remote model calls.
+
 ## 0.15.4
 
 - Bundle checksum-verified Omnigent plugin 0.3.16. Previously authorized hosts can resume after restart when the saved server, host identity, account and token still match; expired authorization returns to the settings conversation. Keep Pi Web 0.12.0, native Settings integration and existing engines.
