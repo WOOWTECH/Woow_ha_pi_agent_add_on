@@ -8,7 +8,8 @@ import { once } from 'node:events';
 import { seed, startLifecycle } from '../rootfs/usr/local/lib/pi-paseo-ha/lifecycle.mjs';
 import { createPaseoBridge } from '../rootfs/usr/local/lib/pi-paseo-ha/bridge.mjs';
 import { createServer } from '../rootfs/usr/local/lib/pi-paseo-ha/server.mjs';
-import { ingressResponse, pairUrl } from '../rootfs/usr/local/lib/pi-paseo-ha/ingress.mjs';
+import { gunzipSync } from 'node:zlib';
+import { ingressResponse, pairUrl, ingressCacheUsage } from '../rootfs/usr/local/lib/pi-paseo-ha/ingress.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const bundle = '/opt/woow/pi-paseo-plugin';
@@ -88,9 +89,40 @@ test('the compiled router base and dynamic assets follow each Ingress session, n
     const response = await ingressResponse(new Response(source, { headers: { 'Content-Type': 'text/javascript', 'Content-Length': '12', 'Cache-Control': 'immutable' } }), prefix);
     const text = await response.text();
     assert.ok(text.includes('base="' + prefix + '/paseo-web"')); assert.ok(text.includes(prefix + '/paseo-web/_expo'));
-    assert.equal(response.headers.get('content-length'), null); assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.equal(Number(response.headers.get('content-length')), Buffer.byteLength(text)); assert.equal(response.headers.get('cache-control'), 'private, no-store');
     assert.ok(response.headers.get('vary').includes('X-Ingress-Path'));
   }
+});
+test('hashed assets gzip after prefix rewrite, validate GET/HEAD/304 per representation and bound cache', async () => {
+  const pathname = '/paseo-web/_expo/static/js/web/index-0123456789abcdef.js';
+  const source = 'const base="/paseo-web";'.repeat(3000);
+  const response = () => new Response(source, { headers: { 'Content-Type': 'text/javascript' } });
+  const prefix = '/api/hassio_ingress/compression0123456789';
+  const options = { pathname, acceptEncoding: 'gzip, deflate, br' };
+  const compressed = await ingressResponse(response(), prefix, 'GET', options);
+  const bytes = Buffer.from(await compressed.arrayBuffer());
+  assert.equal(compressed.headers.get('content-encoding'), 'gzip');
+  assert.equal(Number(compressed.headers.get('content-length')), bytes.length);
+  assert.ok(bytes.length < source.length / 10);
+  assert.equal(gunzipSync(bytes).toString(), source.replaceAll('/paseo-web', prefix + '/paseo-web'));
+  assert.equal(compressed.headers.get('cache-control'), 'private, max-age=31536000, immutable');
+  const head = await ingressResponse(response(), prefix, 'HEAD', options);
+  assert.equal(head.headers.get('etag'), compressed.headers.get('etag'));
+  assert.equal(head.headers.get('content-length'), compressed.headers.get('content-length'));
+  assert.equal(head.headers.get('vary'), 'Accept-Encoding, X-Ingress-Path'); assert.equal(await head.text(), '');
+  const conditional = await ingressResponse(response(), prefix, 'GET', { ...options, ifNoneMatch: head.headers.get('etag') });
+  assert.equal(conditional.status, 304); assert.equal(await conditional.text(), ''); assert.equal(conditional.headers.get('content-length'), null);
+  const plain = await ingressResponse(response(), prefix, 'GET', { ...options, acceptEncoding: 'gzip;q=0, *;q=1' });
+  assert.equal(plain.headers.get('content-encoding'), null); assert.notEqual(plain.headers.get('etag'), head.headers.get('etag'));
+  assert.equal(Number(plain.headers.get('content-length')), Buffer.byteLength(await plain.text()));
+  for (let i = 0; i < 12; i++) {
+    const otherPrefix = `/api/hassio_ingress/cachefixture0123456789${i}`;
+    const item = await ingressResponse(response(), otherPrefix, 'GET', options);
+    assert.ok(gunzipSync(Buffer.from(await item.arrayBuffer())).toString().includes(otherPrefix));
+  }
+  const usage = ingressCacheUsage(); assert.ok(usage.entries <= usage.maxEntries); assert.ok(usage.bytes <= usage.maxBytes);
+  const html = await ingressResponse(new Response('<html>/paseo-web</html>', { headers: { 'Content-Type': 'text/html' } }), prefix, 'GET', options);
+  assert.equal(html.headers.get('cache-control'), 'private, no-store'); assert.equal(html.headers.get('etag'), null);
 });
 function fakePlugin() {
   const calls = [];

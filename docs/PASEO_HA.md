@@ -35,12 +35,18 @@ The client artifact has basePath `/paseo-web`. The server rewrites that base
 in the actual HTML, CSS, JSON and JS responses to the validated
 `/api/hassio_ingress/<token>/paseo-web` prefix. This covers Expo router base,
 absolute assets and dynamic imports. Deep links use the client's index fallback.
-The upstream response is deliberately uncompressed while rewriting; stale gzip
-headers, lengths and ETags are not forwarded. Responses are private/no-store and
-vary on X-Ingress-Path to avoid sharing one HA session's prefix with another.
+The plugin response is read as identity bytes, rewritten and then gzip-compressed
+when the browser accepts gzip. nginx forwards Accept-Encoding to this bridge.
+HTML, setup and API responses remain private/no-store. Hash-named static assets
+are private/immutable under each distinct prefixed URL. Response lengths and
+strong ETags describe the selected encoded representation; HEAD and conditional
+304 use the same validators. Vary includes Accept-Encoding and X-Ingress-Path.
+A four-entry/32 MiB LRU holds rewritten static bytes and gzip bytes only in
+memory; serialized transformation avoids duplicate peak allocations for the
+23 MiB main bundle. HA session paths are never persisted in a cache.
 The settings page retains a strict CSP; the Expo client retains its upstream
 headers (including same-origin framing) without inheriting the settings CSP
-that would block its runtime. HA can compress the final response downstream.
+that would block its runtime. Already-compressed responses are passed through without a second rewrite.
 
 Pairing is an explicit POST operation. Its private fragment remains in the
 browser URL and is not sent to nginx. The persistent private pairing record is
@@ -71,7 +77,7 @@ Only listener/socket/log paths are adapted for local isolation; a small front
 proxy simulates Supervisor path stripping. No browser JS override is used.
 It covers desktop/tablet/390px mobile, settings order, private API/pair link,
 mobile scrolling, actual `/paseo-web/settings` reload, absolute assets, gzip
-request handling, CSP and absence of pairing fragments in access logs.
+wire size, ETag/304/HEAD, CSP and absence of pairing fragments in access logs.
 Provider responses are fixtures: this is not live HA or paid three-engine chat
 acceptance. The Docker build runs real CLI/SDK/static-client smoke tests with
 network disabled. PR builds exercise generated local-source contexts on both

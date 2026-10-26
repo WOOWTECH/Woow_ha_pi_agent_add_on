@@ -60,7 +60,7 @@ const child = spawn(process.execPath, [path.join(web, 'node_modules/next/dist/bi
 });
 fs.closeSync(log);
 let browser;
-const escaped = [], errors = [], results = [], failedClientAssets = [];
+const escaped = [], errors = [], results = [], failedClientAssets = [], transfers = [];
 // Run the actual nginx config; only bind addresses, private socket paths and
 // temporary logs differ. The front proxy simulates Supervisor path stripping;
 // it never rewrites application response bodies or injects browser code.
@@ -139,8 +139,23 @@ try {
     assert.ok(script.startsWith(prefix + '/paseo-web/'));
     const scriptResponse = await context.request.get(new URL(script, base).href, { headers: { 'Accept-Encoding': 'gzip' } });
     assert.equal(scriptResponse.status(), 200);
-    assert.equal(scriptResponse.headers()['cache-control'], 'private, no-store');
-    assert.ok(!scriptResponse.headers()['content-encoding'], 'rewritten scripts must not retain gzip headers');
+    assert.equal(scriptResponse.headers()['cache-control'], 'private, max-age=31536000, immutable');
+    assert.equal(scriptResponse.headers()['content-encoding'], 'gzip');
+    const decompressedBytes = (await scriptResponse.body()).length;
+    const wireBytes = Number(scriptResponse.headers()['content-length']);
+    assert.ok(wireBytes > 0 && wireBytes < decompressedBytes * 0.55, 'gzip must reduce actual wire bytes');
+    assert.equal(scriptResponse.headers().vary, 'Accept-Encoding, X-Ingress-Path');
+    const validator = scriptResponse.headers().etag;
+    assert.ok(validator);
+    const head = await context.request.head(new URL(script, base).href, { headers: { 'Accept-Encoding': 'gzip' } });
+    assert.equal(head.headers().etag, validator); assert.equal(Number(head.headers()['content-length']), wireBytes);
+    assert.equal(head.headers()['content-encoding'], 'gzip'); assert.equal((await head.body()).length, 0);
+    const conditional = await context.request.get(new URL(script, base).href, { headers: { 'Accept-Encoding': 'gzip', 'If-None-Match': validator } });
+    assert.equal(conditional.status(), 304); assert.equal((await conditional.body()).length, 0);
+    const identity = await context.request.get(new URL(script, base).href, { headers: { 'Accept-Encoding': 'identity' } });
+    assert.ok(!identity.headers()['content-encoding']); assert.notEqual(identity.headers().etag, validator);
+    assert.equal(Number(identity.headers()['content-length']), decompressedBytes);
+    transfers.push({ viewport: viewport.width, identityBytes: decompressedBytes, gzipWireBytes: wireBytes, ratio: wireBytes / decompressedBytes, head: true, conditional304: true });
     assert.ok((await scriptResponse.text()).includes(prefix + '/paseo-web'), 'actual bundle router and assets receive the prefix');
     const setupResponse = await context.request.get(base + '/paseo/setup');
     assert.ok(setupResponse.headers()['content-security-policy'].includes("frame-ancestors 'self'"));
@@ -202,7 +217,7 @@ try {
   assert.deepEqual(escaped.filter(url => url !== '/favicon.ico'), []);
   assert.deepEqual(errors, []); assert.deepEqual(failedClientAssets, []);
   assert.ok(!fs.readFileSync(path.join(evidence, 'nginx-access.log'), 'utf8').includes('fixture-pairing'), 'pair fragments never reach nginx access log');
-  fs.writeFileSync(path.join(evidence, 'browser-receipt.json'), JSON.stringify({ piWeb: '0.12.0', upstream: 'npm compiled artifact', proxy: 'actual nginx + simulated HA Supervisor path stripping', modelRuntime: 'fixture only', results, errors, escaped, failedClientAssets }, null, 2));
+  fs.writeFileSync(path.join(evidence, 'browser-receipt.json'), JSON.stringify({ piWeb: '0.12.0', upstream: 'npm compiled artifact', proxy: 'actual nginx + simulated HA Supervisor path stripping', modelRuntime: 'fixture only', results, errors, escaped, failedClientAssets, transfers }, null, 2));
   console.log('PASS real nginx + managed Paseo deep links/assets/gzip + compiled Pi Web 0.12 desktop/tablet/mobile: MCP adjacency, embedded bridge, fresh credentials, model selection, disconnect, Escape, remount, Ingress fallback.');
 } finally {
   await browser?.close(); ingress.closeAllConnections(); ingress.close(); backend.closeAllConnections(); backend.close(); paseo.closeAllConnections(); paseo.close();

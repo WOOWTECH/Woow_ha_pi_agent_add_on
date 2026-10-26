@@ -28,7 +28,9 @@ export function createServer({ bridge = createPaseoBridge(), directory = staticR
         if (!['GET', 'HEAD'].includes(req.method)) return reply(405, { error: { code: 'METHOD_NOT_ALLOWED' } });
         // Ask for plain bytes: the per-request Ingress base must also reach
         // Expo router and dynamic chunk URLs inside the compiled JavaScript.
-        const response = await ingressResponse(await bridge.web(new Request(url, { method: 'GET', headers: { 'accept-encoding': 'identity' } })), prefix, req.method);
+        const response = await ingressResponse(await bridge.web(new Request(url, { method: 'GET', headers: { 'accept-encoding': 'identity' } })), prefix, req.method, {
+          pathname: url.pathname, acceptEncoding: req.headers['accept-encoding'] || '', ifNoneMatch: req.headers['if-none-match'] || '',
+        });
         res.writeHead(response.status, Object.fromEntries(response.headers));
         if (response.body) Readable.fromWeb(response.body).pipe(res); else res.end();
         return;
