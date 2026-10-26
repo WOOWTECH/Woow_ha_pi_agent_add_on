@@ -16,8 +16,8 @@ The native desktop tabs and mobile picker are MCP → Omnigent → Paseo.
 - Omnigent 0.3.16, source `7be342058bd8be5f7e9e079fa05ae59199063a94`,
   public archive SHA256
   `82cd8adda69a98a1d4274eb3358d5bbb20195dd49b27f1d36a55ba8d6e67dabe`.
-  HA 0.15.5 is the candidate version, leaving 0.15.4 available for the concurrent
-  Omnigent-only update. This draft is not published or deployed.
+  HA 0.15.5 is the candidate version, built on the merged HA 0.15.4
+  Omnigent update (PR #15). This draft is not published or deployed.
 
 The image builds daemon dependencies for amd64 and aarch64 and downloads the
 web client at build time, checking the plugin's manifest and checksum. First

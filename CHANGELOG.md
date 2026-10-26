@@ -7,6 +7,10 @@
 - Seed registration and a model-independent setup conversation once. Preserve disabled/removed packages and manual pauses across upgrades. No option or data migration is required.
 - Build PR candidates from the generated local-source context even when the version number is intentionally unchanged; these builds do not publish or overwrite stable images.
 
+## 0.15.4
+
+- Bundle checksum-verified Omnigent plugin 0.3.16. Previously authorized hosts can resume after restart when the saved server, host identity, account and token still match; expired authorization returns to the settings conversation. Keep Pi Web 0.12.0, native Settings integration and existing engines.
+
 ## 0.15.3
 
 - Bundle checksum-verified Omnigent plugin 0.3.15. The plugin now supports Paseo 0.1.9 in compatible Pi Web installs while retaining the 0.3.14 terminal diagnostics. This HA add-on keeps Pi Web 0.12.0, its native Omnigent settings integration and existing engines.
