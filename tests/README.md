@@ -12,17 +12,20 @@ PI_WEB_ROOT=/path/to/pristine/package node --test patches/tests/omnigent-setting
 node patches/patch-omnigent-settings.mjs /path/to/runtime/package
 PI_WEB_ROOT=/path/to/runtime/package EVIDENCE_DIR=/path/to/test-evidence \
   PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs \
+  PASEO_PLUGIN_ROOT=/path/to/verified-paseo/package \
   node tests/omnigent-native-browser.mjs
 ```
 
 The runtime package needs its production dependencies, with the same
 `pi-codemode`, `pi-mcp` and `chord` 1.1.0 overrides as the Dockerfile. The browser
 suite starts real compiled Next.js with a fresh HOME and uses the actual bridge
-and nginx body-rewrite rules behind a local proxy. It checks desktop, tablet and
+and a real nginx process using the production Ingress configuration, behind a
+local proxy that simulates Supervisor path stripping. It checks desktop, tablet and
 phone settings, the MCP-adjacent order, blank/masked credentials, two model
 selections, disconnect confirmation, Escape, remount and the standalone page.
 The Omnigent runtime is a fixture: these tests do not validate provider logins,
-paid model responses, a running nginx server or real HA Supervisor ingress.
+paid model responses or real HA Supervisor ingress. Paseo tests use the
+checksum-verified public 0.1.9 client and cover deep links, assets and gzip.
 
 CI runs these checks with Playwright 1.62.1 and retains screenshots/receipts.
 Set `CHROMIUM_EXECUTABLE` to reuse an installed Chromium locally. Continue to
