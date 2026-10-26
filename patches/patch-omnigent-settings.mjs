@@ -10,6 +10,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { watchOmnigentFirstHome } from './omnigent-first-home.mjs';
 
 const marker = '\n/* woow-ha-omnigent-settings-v1 */\n';
 const sections = '["general","models","skills","agents","plugins","mcp"]';
@@ -20,6 +21,8 @@ const specs = {
   client: {
     sha256: 'f273303c76f7ab856768e315526cdc7cd485fba7f930e649337c57289d96093f',
     replacements: [
+      ['"/icons/catppuccin"', prefix + '+"/icons/catppuccin"'],
+      ['[nk,nw]=(0,i.useState)(()=>!nx);', '[nk,nw]=(0,i.useState)(()=>!nx);(0,i.useLayoutEffect)(' + watchOmnigentFirstHome.toString() + ',[]);'],
       [sections, expanded],
       ['{id:"mcp",label:h("settings.mcp")}', '{id:"mcp",label:h("settings.mcp")},{id:"omnigent",label:"Omnigent"}'],
       ['k("mcp",(0,r.jsx)(mb,{embedded:!0,cwd:t,trust:d,onTrustProject:u,onProjectTrustChanged:p,onClose:s},t??""))',
@@ -29,6 +32,7 @@ const specs = {
   server: {
     sha256: 'a1205fad45252a602e50e13a3c5c2fd21c7968b002d54ad939984052953a2d71',
     replacements: [
+      ['"/icons/catppuccin"', prefix + '+"/icons/catppuccin"'],
       [sections, expanded],
       ['{id:"mcp",label:k("settings.mcp")}', '{id:"mcp",label:k("settings.mcp")},{id:"omnigent",label:"Omnigent"}'],
       ['u("mcp",(0,r.jsx)(zG,{embedded:!0,cwd:a,trust:h,onTrustProject:i,onProjectTrustChanged:j,onClose:d},a??""))',
