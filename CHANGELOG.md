@@ -5,6 +5,7 @@
 - Validate both official compiled bundles and all HTML/RSC/manifest references before patching. Rename the changed client asset using its content hash so upgrades do not reuse the old immutable browser cache. Unknown upstream builds fail before any patch is written.
 - Add real compiled Chromium coverage on desktop, tablet and phone, plus fail-closed/idempotence tests against the official npm artifact.
 - Build both PR architectures from the Store downloader's generated local source context after verifying source bytes, executable permissions, build inputs and source locks. Release builds keep their existing context.
+- Add a manual post-release check for an exact Store commit and published version: verify catalog/release provenance, compile the freshly generated amd64 source context and smoke-test the loaded runtime offline without publishing or installing anything.
 - Document the installation prerequisite of at least 10 GB free on the HAOS data disk, with additional space for source builds. Supervisor pulls images before add-on startup, so a runtime guard cannot enforce this prerequisite.
 
 ## 0.15.0

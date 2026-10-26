@@ -56,6 +56,18 @@ The helper stages an unpublished candidate without touching the live catalog,
 HAOS or Supervisor. Running it alone proves context integrity, not an image
 build, installed add-on health, or current HA Store synchronization.
 
+After a version is released and synchronized to the Store, manually run
+`validate-local-source.yml` with its exact `version` and immutable
+`store_commit`. The workflow verifies the public catalog digest, stable
+Release/tag/source SHA, source archive and manifest checksums before invoking
+the pinned Store downloader. It builds the newly generated amd64 context on
+the official runner, loads the image locally and runs its real Pi/Omnigent
+smoke with networking disabled. It never pushes an image or installs an add-on.
+The whole job is bounded to 45 minutes and the runtime check to 5 minutes;
+source provenance and runtime logs are retained as artifacts. Normal PR build
+cache scopes remain intact. A requested version absent from the specified
+Store commit fails before any image build.
+
 Two scripts, kept independent so you can run whichever part you care about.
 
 ## `smoke-providers.sh` — do the API keys actually work?
