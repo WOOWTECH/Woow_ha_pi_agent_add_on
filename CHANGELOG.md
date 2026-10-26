@@ -1,3 +1,9 @@
+## 0.15.9
+
+- Bundle public, checksum-verified Omnigent 0.3.21. Its bounded native package recheck prevents a temporary settings read failure from hiding a connected plugin in Pi Web; explicit disable remains immediate.
+- Keep Paseo 0.1.10, Pi Web 0.12.0, the existing HA Ingress/settings integration and previously authorized host identity. The native UI adapter is unchanged from 0.3.20.
+- No add-on options, ports, architectures, image names, provider credentials or session formats change. Provider login and real conversations still require operator verification on each installation.
+
 ## 0.15.8
 
 - Bundle public, checksum-verified Paseo 0.1.10 and Omnigent 0.3.20. Preserve Pi Web 0.12.0, its native Ingress/settings integration, first-home navigation and the authorized-host recovery from 0.15.7.
