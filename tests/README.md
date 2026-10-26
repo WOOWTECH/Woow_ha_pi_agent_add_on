@@ -35,6 +35,27 @@ For another upstream release or rebuilt artifact, inspect SettingsPanel and
 settings-navigation sources, update the compatibility hashes/anchors and all
 asset references, and rerun the red/green browser test before changing the pin.
 
+## Local source-build context
+
+PR image builds use the Store downloader from the workflow's pinned
+`.sync-tooling/.addon-sync` checkout. `source-build-context.py` archives the
+committed candidate at HEAD, generates the real local source context, and
+checks every retained source file's bytes and permissions, build inputs,
+manual boot policy, manifest and source lock. It also checks that an existing
+context cannot be overwritten. The subsequent amd64/aarch64 jobs compile
+these generated contexts; their JSON receipts are retained as CI artifacts.
+Release builds keep the repository-root context.
+
+```sh
+python3 tests/source-build-context.py --tooling .sync-tooling/.addon-sync \
+  --arch amd64 --destination /tmp/ha-local-source \
+  --receipt /tmp/ha-local-source-receipt.json
+```
+
+The helper stages an unpublished candidate without touching the live catalog,
+HAOS or Supervisor. Running it alone proves context integrity, not an image
+build, installed add-on health, or current HA Store synchronization.
+
 Two scripts, kept independent so you can run whichever part you care about.
 
 ## `smoke-providers.sh` — do the API keys actually work?

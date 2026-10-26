@@ -49,6 +49,14 @@ jobs:
     - name: Set up Buildx
       uses: docker/setup-buildx-action@v3
       if: steps.existing.outputs.reuse != 'true'
+    - name: Stage and validate local source-build context
+      id: local-context
+      if: github.event_name == 'pull_request' && steps.existing.outputs.reuse != 'true'
+      run: |
+        python3 tests/source-build-context.py --tooling .sync-tooling/.addon-sync \
+          --arch '${{ matrix.arch }}' --destination "$RUNNER_TEMP/local-addon-source" \
+          --receipt "$RUNNER_TEMP/local-source-${{ matrix.arch }}.json" \
+          --github-output "$GITHUB_OUTPUT"
     - name: Log in to GHCR
       if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push)
       uses: docker/login-action@v3
@@ -59,7 +67,9 @@ jobs:
     - name: Build & push
       uses: docker/build-push-action@v6
       with:
-        context: .
+        # PRs build the actual downloader-generated local source context.
+        # Its Dockerfile and every build input are verified byte/mode-identical.
+        context: ${{ github.event_name == 'pull_request' && steps.local-context.outputs.context || '.' }}
         platforms: ${{ matrix.platform }}
         push: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push) }}
         provenance: false
@@ -88,6 +98,13 @@ jobs:
         cache-from: type=gha,scope=${{ matrix.arch }}
         cache-to: type=gha,scope=${{ matrix.arch }},mode=max
       if: steps.existing.outputs.reuse != 'true'
+    - name: Retain local source-build evidence
+      if: always() && github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ha-local-source-${{ matrix.arch }}
+        path: ${{ runner.temp }}/local-source-${{ matrix.arch }}.json
+        if-no-files-found: ignore
     - name: Enforce transport-safe image layers
       if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.existing.outputs.reuse != 'true'
       env:

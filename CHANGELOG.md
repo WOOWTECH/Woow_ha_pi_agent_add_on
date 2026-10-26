@@ -4,6 +4,7 @@
 - Keep credentials out of the host UI: the embedded form is unmounted when leaving its section, conversation links navigate the parent, and Escape closes Settings. The existing Unix socket, token checks, origin checks and request limit are unchanged.
 - Validate both official compiled bundles and all HTML/RSC/manifest references before patching. Rename the changed client asset using its content hash so upgrades do not reuse the old immutable browser cache. Unknown upstream builds fail before any patch is written.
 - Add real compiled Chromium coverage on desktop, tablet and phone, plus fail-closed/idempotence tests against the official npm artifact.
+- Build both PR architectures from the Store downloader's generated local source context after verifying source bytes, executable permissions, build inputs and source locks. Release builds keep their existing context.
 - Document the installation prerequisite of at least 10 GB free on the HAOS data disk, with additional space for source builds. Supervisor pulls images before add-on startup, so a runtime guard cannot enforce this prerequisite.
 
 ## 0.15.0
