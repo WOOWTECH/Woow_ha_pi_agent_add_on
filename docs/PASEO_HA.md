@@ -13,9 +13,9 @@ The native desktop tabs and mobile picker are MCP → Omnigent → Paseo.
   `68388f19198f1f696efe18906df42049e208d135`, stream repair
   `043aa8286b90418eb1f4e9982ca1a349c84f2a3d`, archive SHA256
   `7e7495f70f721e96e121f76bd91573150cf91aa112143d9f4d51a3fcf9dc8bce`.
-- Omnigent 0.3.17, source `0893bb154302741f41455d3a2ddb59ce58aa72d5`,
+- Omnigent 0.3.18, source `619863504d48af03e80f9ff575afacdeca2e0dda`,
   public archive SHA256
-  `a15d6574bc03cdb3737b75626ccde2240afb3fc606ae8fbf1b7be6db06f8d14e`.
+  `c1e9033b5478e82bddf3cb54f11439151a821d72d8291c05556b8c498db47ecd`.
   HA 0.15.6 builds on public HA 0.15.5, preserving its Paseo integration
   while adding guarded first-home Omnigent setup navigation.
 
@@ -74,7 +74,7 @@ shutdown stops the owned supervisor without persisting a user pause.
 New users still need to authorize the provider CLIs through their official
 login flows. This integration does not migrate or create provider credentials.
 The bundled Claude Code/Codex versions, shared skills/MCP and Omnigent bridge
-are retained. Its existing `boot` call now uses Omnigent 0.3.17 recovery: only
+are retained. Its existing `boot` call now uses Omnigent 0.3.18 recovery: only
 matching private authorization receipts for this installation may resume the
 recorded host. Disabled/disconnected or credential-only states do not silently
 authorize a reconnect. Existing custom plugin paths remain user-controlled and
@@ -84,9 +84,13 @@ Isolated HA 0.15.2→0.15.5 acceptance confirmed automatic recovery of the
 original host after official upgrade and addon restart. A whole-VM restart
 exposed `HOST_PROCESS_MISMATCH`: the saved PID belonged to an unrelated
 process in a different boot, so the shared plugin safely refused recovery.
-Omnigent 0.3.17 retains this process guard; this UX update does not resolve
-that persistence limitation. The failed QA state is retained for the common
-plugin fix; no unrelated process is killed and no authorization is bypassed.
+Omnigent 0.3.18 distinguishes a proven stale process receipt inside the
+existing authorized launch lock. It adopts an exact current installation host
+or starts the same authorized registered host; ambiguous identity fails closed.
+Disconnect keeps its strict process check, and no unrelated process is signaled.
+The original failed QA state is preserved for official HA 0.15.6 upgrade and
+addon/VM restart acceptance. A read-only candidate classification passed on
+that actual record; live recovery is a separate release acceptance gate.
 
 ## Validation and release scope
 
