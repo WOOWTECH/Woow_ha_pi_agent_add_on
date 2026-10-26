@@ -1,0 +1,88 @@
+name: Validate published local source build
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact stable Pi Agent version in the published Store catalog (x.y.z)
+        type: string
+        required: true
+      store_commit:
+        description: Full immutable WOOWTECH/Woow_HA_App_Store commit containing that version
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: local-source-validation-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    name: Published source context (amd64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout validation helper
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Checkout pinned public Store downloader
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: WOOWTECH/Woow_HA_App_Store
+          ref: 26bb83db3b28db67c33b13350f3be6cddc880527
+          path: .sync-tooling
+          sparse-checkout: .addon-sync
+          persist-credentials: false
+      - name: Install validator dependencies
+        run: python3 -m pip install -r .sync-tooling/.addon-sync/requirements.txt
+      - name: Verify published catalog and generate fresh local source context
+        id: source
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          STORE_COMMIT: ${{ inputs.store_commit }}
+        run: |
+          python3 tests/source-build-context.py --tooling .sync-tooling/.addon-sync \
+            --store-commit "$STORE_COMMIT" --version "$REQUESTED_VERSION" --arch amd64 \
+            --destination "$RUNNER_TEMP/published-local-source" \
+            --receipt "$RUNNER_TEMP/published-source-context.json" --github-output "$GITHUB_OUTPUT"
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build the generated source context without publishing
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.source.outputs.context }}
+          platforms: linux/amd64
+          push: false
+          load: true
+          provenance: false
+          tags: local/woow-ha-pi-source:${{ steps.source.outputs.version }}
+          build-args: |
+            BUILD_FROM=${{ steps.source.outputs.base_image }}
+            BUILD_ARCH=amd64
+            BUILD_VERSION=${{ steps.source.outputs.version }}
+            BUILD_REF=${{ steps.source.outputs.source_sha }}
+            BUILD_NAME=${{ steps.source.outputs.name }}
+            BUILD_DESCRIPTION=${{ steps.source.outputs.description }}
+            BUILD_REPOSITORY=WOOWTECH/Woow_ha_pi_agent_add_on
+          cache-from: |
+            type=gha,scope=amd64
+            type=gha,scope=local-source-amd64
+          cache-to: type=gha,scope=local-source-amd64,mode=max
+      - name: Exercise the built runtime offline
+        timeout-minutes: 6
+        env:
+          CONTEXT: ${{ steps.source.outputs.context }}
+          VERSION: ${{ steps.source.outputs.version }}
+        run: |
+          set -o pipefail
+          timeout 300s docker run --rm --network none --entrypoint timeout \
+            --mount "type=bind,source=$CONTEXT/tests/omnigent-image-smoke.mjs,target=/tmp/source-runtime-smoke.mjs,readonly" \
+            "local/woow-ha-pi-source:$VERSION" 290s node /tmp/source-runtime-smoke.mjs \
+            2>&1 | tee "$RUNNER_TEMP/published-source-runtime.log"
+      - name: Retain provenance and runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-local-source-amd64
+          path: |
+            ${{ runner.temp }}/published-source-context.json
+            ${{ runner.temp }}/published-source-runtime.log
+          if-no-files-found: ignore
