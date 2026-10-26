@@ -1,0 +1,59 @@
+# PR #18 merged to main, but GitHub did not deliver its push event. The normal
+# manual image build succeeded, while build.yml deliberately skipped its
+# push-only Release job. Recover only this verified source/image pair through
+# the Store's existing reusable Release workflow.
+name: Recover verified HA 0.15.8 Release
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify:
+    name: Verify immutable source, CI and both images
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Verify the exact 0.15.8 publication candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source_sha=5dce29b448805aa1c61b5d406480511a5ae4fa34
+          test "${GITHUB_REF}" = refs/heads/main
+          test "$(gh api repos/${GITHUB_REPOSITORY}/commits/main --jq .sha)" = "${GITHUB_SHA}"
+          git merge-base --is-ancestor "${source_sha}" HEAD
+          git show "${source_sha}:config.yaml" | grep -qx 'version: "0.15.8"'
+          gh api repos/${GITHUB_REPOSITORY}/actions/runs/40344731027 \
+            --jq '. | select(.conclusion == "success" and .status == "completed" and .event == "workflow_dispatch" and .head_sha == "5dce29b448805aa1c61b5d406480511a5ae4fa34") | .id' \
+            | grep -qx 40344731027
+          for arch in amd64 aarch64; do
+            repo="woowtech/woow-ha-pi-agent-${arch}"
+            token="$(curl -fsSL "https://ghcr.io/token?service=ghcr.io&scope=repository:${repo}:pull" | jq -r .token)"
+            test -n "${token}"
+            curl -fsSL -H "Authorization: Bearer ${token}" \
+              -H 'Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+              "https://ghcr.io/v2/${repo}/manifests/0.15.8" > "${RUNNER_TEMP}/${arch}-0158.json"
+            if [ "${arch}" = amd64 ]; then
+              expected=ad8c72aa6f146d22f4d91f179fe79176358ea806cf0be289e56e52c3d97e95d1
+            else
+              expected=99e0e4311a1a11a8fbd800803601030a2d7258fc1c3e02c6c9aa1fc917cdfb4b
+            fi
+            echo "${expected}  ${RUNNER_TEMP}/${arch}-0158.json" | sha256sum --check --strict
+            curl -fsSL -H "Authorization: Bearer ${token}" \
+              -H 'Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+              "https://ghcr.io/v2/${repo}/manifests/0.14.4" > "${RUNNER_TEMP}/${arch}-baseline.json"
+            node tests/assert-image-layer-sizes.mjs "${RUNNER_TEMP}/${arch}-baseline.json" < "${RUNNER_TEMP}/${arch}-0158.json"
+          done
+
+  release:
+    needs: verify
+    permissions:
+      contents: write
+    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-release.yml@main
+    with:
+      sha: 5dce29b448805aa1c61b5d406480511a5ae4fa34
