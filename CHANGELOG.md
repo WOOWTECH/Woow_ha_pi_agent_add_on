@@ -1,5 +1,7 @@
 ## 0.15.1
 
+- Bundle checksum-verified Omnigent plugin 0.3.13 with runtime retention, native provider-error classification and actual verification-model receipts; retain Pi Web 0.12.0 and the existing installed engines.
+
 - Add Omnigent immediately after MCP in Pi Web 0.12.0's native Settings tabs and mobile section picker. The section embeds the existing private HA settings page; the top-right entry and standalone Ingress `/omnigent` page remain available.
 - Keep credentials out of the host UI: the embedded form is unmounted when leaving its section, conversation links navigate the parent, and Escape closes Settings. The existing Unix socket, token checks, origin checks and request limit are unchanged.
 - Validate both official compiled bundles and all HTML/RSC/manifest references before patching. Rename the changed client asset using its content hash so upgrades do not reuse the old immutable browser cache. Unknown upstream builds fail before any patch is written.

@@ -170,8 +170,8 @@ RUN apt-get update \
 # HA already ships a pinned official Claude CLI. The SDK falls back to PATH;
 # remove its duplicate binary before any runtime COPY creates an OCI layer.
 RUN /opt/omnigent/venv/bin/python -c 'from pathlib import Path; import claude_agent_sdk; p=Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude"; print("Removed duplicate Claude bytes:", p.stat().st_size if p.exists() else 0); p.unlink(missing_ok=True)'
-ARG PI_OMNIGENT_VERSION=0.3.11
-ARG PI_OMNIGENT_SHA256=4d1565e727f8b02accfab135e7e4376dd00a2448e1f212299089d3fae7e19a01
+ARG PI_OMNIGENT_VERSION=0.3.13
+ARG PI_OMNIGENT_SHA256=e86e9ad849da4c38d952b0793a11ad7eb8277b0738b07a8571d6b491ca6d8c99
 RUN curl --fail --silent --show-error --location --retry 3 \
       "https://github.com/WOOWTECH/pi-omnigent-plugin/releases/download/v${PI_OMNIGENT_VERSION}/woowtech-pi-omnigent-plugin-${PI_OMNIGENT_VERSION}.tgz" -o /tmp/plugin.tgz \
     && echo "${PI_OMNIGENT_SHA256}  /tmp/plugin.tgz" | sha256sum --check --strict \
