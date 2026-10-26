@@ -1,5 +1,6 @@
-## 0.15.6 (candidate; release pending final plugin pin)
+## 0.15.6
 
+- Bundle public, checksum-verified Omnigent 0.3.17 and preserve Paseo 0.1.9 from 0.15.5.
 - Open the existing unfinished Omnigent setup conversation on an untouched first homepage, including mobile and bounded cold-boot waiting.
 - Respect explicit links, remembered work, drafts and interactions, including before hydration; preserve Ingress paths and avoid navigation loops.
 - Read local plugin metadata for eligibility without runtime probes or remote model calls.

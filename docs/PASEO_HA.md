@@ -13,11 +13,11 @@ The native desktop tabs and mobile picker are MCP → Omnigent → Paseo.
   `68388f19198f1f696efe18906df42049e208d135`, stream repair
   `043aa8286b90418eb1f4e9982ca1a349c84f2a3d`, archive SHA256
   `7e7495f70f721e96e121f76bd91573150cf91aa112143d9f4d51a3fcf9dc8bce`.
-- Omnigent 0.3.16, source `7be342058bd8be5f7e9e079fa05ae59199063a94`,
+- Omnigent 0.3.17, source `0893bb154302741f41455d3a2ddb59ce58aa72d5`,
   public archive SHA256
-  `82cd8adda69a98a1d4274eb3358d5bbb20195dd49b27f1d36a55ba8d6e67dabe`.
-  HA 0.15.5 is the candidate version, built on the merged HA 0.15.4
-  Omnigent update (PR #15). This draft is not published or deployed.
+  `a15d6574bc03cdb3737b75626ccde2240afb3fc606ae8fbf1b7be6db06f8d14e`.
+  HA 0.15.6 builds on public HA 0.15.5, preserving its Paseo integration
+  while adding guarded first-home Omnigent setup navigation.
 
 The image builds daemon dependencies for amd64 and aarch64 and downloads the
 web client at build time, checking the plugin's manifest and checksum. First
@@ -74,12 +74,19 @@ shutdown stops the owned supervisor without persisting a user pause.
 New users still need to authorize the provider CLIs through their official
 login flows. This integration does not migrate or create provider credentials.
 The bundled Claude Code/Codex versions, shared skills/MCP and Omnigent bridge
-are retained. Its existing `boot` call now uses Omnigent 0.3.16 recovery: only
+are retained. Its existing `boot` call now uses Omnigent 0.3.17 recovery: only
 matching private authorization receipts for this installation may resume the
 recorded host. Disabled/disconnected or credential-only states do not silently
-authorize a reconnect. Actual persisted-login recovery still needs live HA
-acceptance by the parent owner. Existing custom plugin paths remain user-controlled and may need
-upgrading to support the managed web API.
+authorize a reconnect. Existing custom plugin paths remain user-controlled and
+may need upgrading to support the managed web API.
+
+Isolated HA 0.15.2→0.15.5 acceptance confirmed automatic recovery of the
+original host after official upgrade and addon restart. A whole-VM restart
+exposed `HOST_PROCESS_MISMATCH`: the saved PID belonged to an unrelated
+process in a different boot, so the shared plugin safely refused recovery.
+Omnigent 0.3.17 retains this process guard; this UX update does not resolve
+that persistence limitation. The failed QA state is retained for the common
+plugin fix; no unrelated process is killed and no authorization is bypassed.
 
 ## Validation and release scope
 
