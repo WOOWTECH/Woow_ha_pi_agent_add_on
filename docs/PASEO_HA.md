@@ -13,8 +13,11 @@ The native desktop tabs and mobile picker are MCP → Omnigent → Paseo.
   `68388f19198f1f696efe18906df42049e208d135`, stream repair
   `043aa8286b90418eb1f4e9982ca1a349c84f2a3d`, archive SHA256
   `7e7495f70f721e96e121f76bd91573150cf91aa112143d9f4d51a3fcf9dc8bce`.
-- Omnigent is retained from the latest main; coordinate its 0.3.16 recovery
-  release and the next available HA version before merging this draft.
+- Omnigent 0.3.16, source `7be342058bd8be5f7e9e079fa05ae59199063a94`,
+  public archive SHA256
+  `82cd8adda69a98a1d4274eb3358d5bbb20195dd49b27f1d36a55ba8d6e67dabe`.
+  HA 0.15.5 is the candidate version, leaving 0.15.4 available for the concurrent
+  Omnigent-only update. This draft is not published or deployed.
 
 The image builds daemon dependencies for amd64 and aarch64 and downloads the
 web client at build time, checking the plugin's manifest and checksum. First
@@ -46,7 +49,12 @@ memory; serialized transformation avoids duplicate peak allocations for the
 23 MiB main bundle. HA session paths are never persisted in a cache.
 The settings page retains a strict CSP; the Expo client retains its upstream
 headers (including same-origin framing) without inheriting the settings CSP
-that would block its runtime. Already-compressed responses are passed through without a second rewrite.
+that would block its runtime. The bridge always requests identity bytes from the
+plugin for text responses;
+unexpected upstream-encoded text is rejected instead of rewriting compressed
+bytes. After prefix rewriting the bridge negotiates and generates gzip itself.
+nginx forwards those final encoded bytes unchanged. Binary responses need no
+prefix rewriting and retain their bytes and representation headers.
 
 Pairing is an explicit POST operation. Its private fragment remains in the
 browser URL and is not sent to nginx. The persistent private pairing record is
@@ -66,7 +74,11 @@ shutdown stops the owned supervisor without persisting a user pause.
 New users still need to authorize the provider CLIs through their official
 login flows. This integration does not migrate or create provider credentials.
 The bundled Claude Code/Codex versions, shared skills/MCP and Omnigent bridge
-are retained. Existing custom plugin paths remain user-controlled and may need
+are retained. Its existing `boot` call now uses Omnigent 0.3.16 recovery: only
+matching private authorization receipts for this installation may resume the
+recorded host. Disabled/disconnected or credential-only states do not silently
+authorize a reconnect. Actual persisted-login recovery still needs live HA
+acceptance by the parent owner. Existing custom plugin paths remain user-controlled and may need
 upgrading to support the managed web API.
 
 ## Validation and release scope
@@ -83,3 +95,7 @@ acceptance. The Docker build runs real CLI/SDK/static-client smoke tests with
 network disabled. PR builds exercise generated local-source contexts on both
 architectures and never push images. Parent integration owns the release
 version, merge, Store/local-build synchronization and live acceptance.
+
+The measured local gzip runtime layer is about 164 MiB, below the 256 MiB
+changed-layer budget. This estimate does not replace the final registry manifest
+check after publication; that gate remains part of parent release verification.

@@ -1,6 +1,6 @@
-## Unreleased — Paseo HA integration (draft)
+## 0.15.5
 
-- Bundle checksum-verified Paseo 0.1.9, its locked daemon and the fixed web client. Retain Pi Web 0.12.0, existing Omnigent integration, provider login, sessions and settings.
+- Bundle checksum-verified Omnigent 0.3.16 with explicitly authorized host recovery on boot; credentials alone do not authorize reconnect. Bundle Paseo 0.1.9, its locked daemon and the fixed web client. Retain Pi Web 0.12.0, existing Omnigent integration, provider login, sessions and settings.
 - Add Paseo immediately after Omnigent in native desktop/mobile Settings. Use a private Unix socket and the existing HA Supervisor-only nginx authentication boundary.
 - Adapt the deployed web client's HTML, router base, JS and assets to the validated HA Ingress prefix; cover deep-route refresh, pairing fragments, gzip and phone scrolling through real nginx browser tests.
 - Serve rewritten hash-named client assets with private immutable caching and negotiated gzip; bound the per-prefix memory cache and verify encoded lengths, ETags, HEAD and 304 responses. HTML, setup and API responses remain private/no-store.
