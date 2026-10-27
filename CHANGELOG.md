@@ -1,3 +1,8 @@
+## 0.15.12
+
+- Bundle the verified Paseo 0.1.12 archive. Paseo registration and service recovery no longer create or open a setup conversation; pairing remains an explicit action in Settings → Paseo.
+- Remove the old setup-conversation link from the native Settings iframe. Preserve existing sessions, provider credentials, relay pairing state, service pause state, ingress routing, and Pi Web 0.12.0.
+
 ## 0.15.11
 
 - Remove Omnigent first-home auto-navigation, setup conversation creation and the floating top-right link. Bind from Settings → Omnigent; preserve existing sessions and authorized host recovery.
