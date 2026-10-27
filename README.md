@@ -396,4 +396,4 @@ Bundled upstream packages retain their own licenses (`@agegr/pi-web` MIT, `@eare
 
 ## Paseo managed web client
 
-See [HA integration, Ingress and upgrade notes](docs/PASEO_HA.md). The image bundles Paseo 0.1.10 and Omnigent 0.3.24, adds Paseo beside Omnigent and retains Pi Web 0.12.0.
+See [HA integration, Ingress and upgrade notes](docs/PASEO_HA.md). The image bundles Paseo 0.1.12 and Omnigent 0.3.24, keeps Paseo beside Omnigent in Settings and retains Pi Web 0.12.0. Paseo pairing begins only when the user presses the button in Settings; the add-on no longer creates or opens a setup conversation.

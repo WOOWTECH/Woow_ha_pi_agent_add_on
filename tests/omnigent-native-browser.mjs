@@ -66,7 +66,7 @@ const webClient = await import(pathToFileURL(path.join(paseoRoot, 'src/web-clien
 const clientState = { stateDir: path.join(evidence, 'paseo-state') };
 await webClient.ensureWebClient(clientState);
 const paseoCalls = [];
-const paseoPlugin = { enabled: true, version: '0.1.10', api: {
+const paseoPlugin = { enabled: true, version: '0.1.12', api: {
   status: async () => ({ phase: 'ready', daemon: { running: true }, webClient: { ready: true, version: '0.13.0-woow.1' }, providers: [{ provider: 'claude', status: 'ready' }, { provider: 'codex', status: 'ready' }, { provider: 'pi', status: 'ready' }] }),
   pair: async () => { paseoCalls.push('pair'); return { url: '/paseo-web/#fixture-pairing' }; },
   web: request => webClient.serveWebClient(request, clientState),
@@ -157,6 +157,7 @@ try {
     await page.waitForTimeout(1100);
     assert.notEqual(new URL(page.url()).searchParams.get('session'), omniSession.id, 'legacy setup session stays closed');
     assert.equal(await page.getByRole('link', { name: 'Omnigent', exact: true }).count(), 0, 'no floating Omnigent link on home');
+    assert.equal(await page.getByRole('link', { name: 'Paseo', exact: true }).count(), 0, 'no floating Paseo link on home');
     assert.equal((await context.request.get(base + '/omnigent/onboarding')).status(), 404);
     assert.equal((await context.request.get(base + '/omnigent/launcher.js')).status(), 404);
     assertConversationHistory();
@@ -180,6 +181,7 @@ try {
     await select('paseo');
     const paseoFrame = page.frameLocator('iframe[title="Paseo"]');
     await paseoFrame.locator('#pair:enabled').waitFor();
+    assert.equal(await paseoFrame.locator('#onboarding').count(), 0, 'Settings must not link to a setup conversation');
     assert.equal(await page.locator('iframe[title="Paseo"]').getAttribute('src'), prefix + '/paseo/setup?embedded=1');
     await paseoFrame.locator('#pair').click();
     await paseoFrame.locator('#pair-link:not([hidden])').waitFor();
