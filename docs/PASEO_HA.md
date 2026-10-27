@@ -13,13 +13,11 @@ The native desktop tabs and mobile picker are MCP → Omnigent → Paseo.
   `68388f19198f1f696efe18906df42049e208d135`, stream repair
   `043aa8286b90418eb1f4e9982ca1a349c84f2a3d`, archive SHA256
   `7e7495f70f721e96e121f76bd91573150cf91aa112143d9f4d51a3fcf9dc8bce`.
-- Omnigent 0.3.21, source `636e5f95049e0d53aaf0690db319d2be220cd495`,
-  public archive SHA256
-  `41a0aadfc811900f4ce83384e08700408c3ad59a931e6011b4516e200ef86b64`.
-  HA 0.15.10 builds on public HA 0.15.9, preserving its guarded first-home
-  navigation and authorized-host recovery while updating Paseo to r3.
-  The public combined adapter supports Paseo 0.1.10; HA retains its own
-  Pi Web 0.12 native integration and does not apply the 0.10 overlay.
+- Omnigent 0.3.24, source `2604e13`, public archive SHA256
+  `adc92aecf53155f23943a774f02c6d6e41c9e05518e60fca4a151eee4b105b12`.
+  HA 0.15.11 keeps authorized-host recovery and native Pi Web 0.12 settings;
+  Omnigent setup now runs only from Settings. The floating link and automatic
+  setup conversation are removed. Paseo's own pairing remains available.
 
 The image builds daemon dependencies for amd64 and aarch64 and downloads the
 web client at build time, checking the plugin's manifest and checksum. First
@@ -94,7 +92,7 @@ bundles r3 only; it does not copy the previous image's r2 runtime directory.
 New users still need to authorize the provider CLIs through their official
 login flows. This integration does not migrate or create provider credentials.
 The bundled Claude Code/Codex versions, shared skills/MCP and Omnigent bridge
-are retained. Its existing `boot` call retains Omnigent 0.3.19 recovery in 0.3.21: only
+are retained. Its existing `boot` call retains Omnigent authorized-host recovery in 0.3.24: only
 matching private authorization receipts for this installation may resume the
 recorded host. Disabled/disconnected or credential-only states do not silently
 authorize a reconnect. Existing custom plugin paths remain user-controlled and
