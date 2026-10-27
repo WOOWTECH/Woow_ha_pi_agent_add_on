@@ -192,8 +192,9 @@ try {
     await clientPage.waitForLoadState('networkidle');
     assert.ok(clientPage.url().includes(prefix + '/paseo-web/'));
     const script = await clientPage.locator('script[src*="/_expo/"]').first().getAttribute('src');
-    assert.ok(script.startsWith(prefix + '/paseo-web/'));
-    const scriptResponse = await context.request.get(new URL(script, base).href, { headers: { 'Accept-Encoding': 'gzip' } });
+    const scriptUrl = new URL(script, clientPage.url());
+    assert.ok(scriptUrl.pathname.startsWith(prefix + '/paseo-web/'), `script escaped HA Ingress: ${scriptUrl.pathname}`);
+    const scriptResponse = await context.request.get(scriptUrl.href, { headers: { 'Accept-Encoding': 'gzip' } });
     assert.equal(scriptResponse.status(), 200);
     assert.equal(scriptResponse.headers()['cache-control'], 'private, max-age=31536000, immutable');
     assert.equal(scriptResponse.headers()['content-encoding'], 'gzip');
@@ -203,12 +204,12 @@ try {
     assert.equal(scriptResponse.headers().vary, 'Accept-Encoding, X-Ingress-Path');
     const validator = scriptResponse.headers().etag;
     assert.ok(validator);
-    const head = await context.request.head(new URL(script, base).href, { headers: { 'Accept-Encoding': 'gzip' } });
+    const head = await context.request.head(scriptUrl.href, { headers: { 'Accept-Encoding': 'gzip' } });
     assert.equal(head.headers().etag, validator); assert.equal(Number(head.headers()['content-length']), wireBytes);
     assert.equal(head.headers()['content-encoding'], 'gzip'); assert.equal((await head.body()).length, 0);
-    const conditional = await context.request.get(new URL(script, base).href, { headers: { 'Accept-Encoding': 'gzip', 'If-None-Match': validator } });
+    const conditional = await context.request.get(scriptUrl.href, { headers: { 'Accept-Encoding': 'gzip', 'If-None-Match': validator } });
     assert.equal(conditional.status(), 304); assert.equal((await conditional.body()).length, 0);
-    const identity = await context.request.get(new URL(script, base).href, { headers: { 'Accept-Encoding': 'identity' } });
+    const identity = await context.request.get(scriptUrl.href, { headers: { 'Accept-Encoding': 'identity' } });
     assert.ok(!identity.headers()['content-encoding']); assert.notEqual(identity.headers().etag, validator);
     assert.equal(Number(identity.headers()['content-length']), decompressedBytes);
     transfers.push({ viewport: viewport.width, identityBytes: decompressedBytes, gzipWireBytes: wireBytes, ratio: wireBytes / decompressedBytes, head: true, conditional304: true });
