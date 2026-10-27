@@ -72,6 +72,9 @@ jobs:
         context: ${{ github.event_name == 'pull_request' && steps.local-context.outputs.context || '.' }}
         platforms: ${{ matrix.platform }}
         push: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push) }}
+        # A PR keeps its amd64 image in the local docker daemon for the
+        # upgrade comparison's SBOM step below.
+        load: ${{ github.event_name == 'pull_request' && matrix.arch == 'amd64' }}
         provenance: false
         tags: 'ghcr.io/woowtech/woow-ha-pi-agent-${{ matrix.arch }}:${{ steps.meta.outputs.version }}
 
@@ -98,6 +101,22 @@ jobs:
         cache-from: type=gha,scope=${{ matrix.arch }}
         cache-to: type=gha,scope=${{ matrix.arch }},mode=max
       if: steps.existing.outputs.reuse != 'true'
+    # The SBOM of this image is what the Upgrade comparison scans as the new
+    # version (pipeline #89, category 4): pinned Syft from the Store, uploaded
+    # as artifact upgrade-comparison-sbom-woow_ha_pi_agent. A PR always builds:
+    # the reuse guard above (steps.existing) runs only on non-PR events, so a
+    # version-bump PR builds even when that version's image already exists.
+    # The PR context is the generated local source context, whose Dockerfile
+    # and build inputs are verified identical to the repository's. The PR
+    # build reads the same gha cache scope as the main build that ships (PRs
+    # can read main's cache, main never reads a PR's), so the SBOM is of the
+    # layers the Release build reuses.
+    - name: SBOM for the upgrade comparison
+      if: github.event_name == 'pull_request' && matrix.arch == 'amd64'
+      uses: WOOWTECH/Woow_HA_App_Store/.github/actions/addon-sbom@main
+      with:
+        component: woow_ha_pi_agent
+        image: ghcr.io/woowtech/woow-ha-pi-agent-amd64:${{ steps.meta.outputs.version }}
     - name: Retain local source-build evidence
       if: always() && github.event_name == 'pull_request'
       uses: actions/upload-artifact@v4
@@ -117,6 +136,24 @@ jobs:
           | node tests/assert-image-layer-sizes.mjs /tmp/baseline-manifest.json
     needs:
     - test
+  # Upgrade comparison (pipeline #89): a PR that bumps the add-on version is
+  # compared with the latest formal Release. A breaking config.yaml change
+  # not declared in upgrade-notes.yaml blocks it, and so does a new fixable
+  # Critical/High vulnerability in the amd64 image (the SBOM from
+  # Build (amd64) against the Release's GHCR image) unless that file accepts
+  # it. No needs: on the build, so a PR that changes no version passes in
+  # seconds; after a version bump the job waits for this run's SBOM artifact
+  # (actions: read) and fails if Build (amd64) never uploads it. On push the
+  # job passes at once, so this workflow's non-PR run (registry
+  # required_workflows) still succeeds. Reported as "Upgrade comparison / compare".
+  upgrade-comparison:
+    name: Upgrade comparison
+    permissions:
+      contents: read
+      actions: read
+    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-upgrade-check.yml@main
+    with:
+      sbom_artifact: upgrade-comparison-sbom-*
   # The App Store ships only published Releases (registry ref_policy: release).
   # After the checks above pass on main, the Store's shared workflow publishes
   # the Release for a config.yaml version that has none yet.
