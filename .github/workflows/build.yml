@@ -178,11 +178,25 @@ jobs:
         npm pack @agegr/pi-web@0.12.0 --pack-destination "$RUNNER_TEMP/pi-web-native"
         tar -xzf "$RUNNER_TEMP/pi-web-native/agegr-pi-web-0.12.0.tgz" -C "$RUNNER_TEMP/pi-web-native"
         PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test patches/tests/omnigent-settings.test.mjs
+    - name: Install Pi Web production dependencies as the image does
+      run: |
+        npm install --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/pi-web-native/package" \
+          @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0
+    # The released plugin from cli-runtime/versions.json, driven by the add-on's
+    # seed, lifecycle and Settings bridge in seconds, before any image build:
+    # fresh install, same-path upgrade and a plugin source switch.
+    - name: Version pins and released Omnigent plugin contract
+      run: |
+        node --test tests/versions.test.mjs
+        url="$(jq -er '.omnigentPlugin.url' cli-runtime/versions.json)"
+        sha256="$(jq -er '.omnigentPlugin.sha256' cli-runtime/versions.json)"
+        curl -fLsS --retry 3 "$url" -o "$RUNNER_TEMP/omnigent-plugin.tgz"
+        echo "$sha256  $RUNNER_TEMP/omnigent-plugin.tgz" | sha256sum --check --strict
+        OMNIGENT_PLUGIN_TGZ="$RUNNER_TEMP/omnigent-plugin.tgz" PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" \
+          node --test tests/omnigent-contract.test.mjs
     - name: Exercise compiled native settings and Ingress fallback in Chromium
       run: |
         sudo apt-get update && sudo apt-get install -y nginx
-        npm install --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/pi-web-native/package" \
-          @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0
         npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/ha-browser" playwright@1.62.1
         node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
         node patches/patch-omnigent-settings.mjs "$RUNNER_TEMP/pi-web-native/package"
