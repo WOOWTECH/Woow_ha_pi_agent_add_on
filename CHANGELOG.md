@@ -1,3 +1,30 @@
+## 0.15.17
+
+- Bundle the checksum-verified public Paseo plugin 0.1.14 (Omnigent plugin stays 0.3.29), the same generation that the root Pi Agent image 0.3.21 ships. Paseo no longer persists a user disable when its supervisor is only stopped (container restart, or a supervisor takeover after the plugin source changed), so a restart can no longer switch Paseo off; and an empty or error-cached provider model catalog is refreshed once after login, so a fresh login lists its models without a restart. Omnigent is still bound only from Settings → Omnigent; no setup conversation is created or opened.
+- Keep Pi Web 0.12.0, add-on options, ports, architectures, user sessions, provider credentials and authorized-host recovery. No migration is needed.
+
+## 0.15.16
+
+- Bundle the checksum-verified public Omnigent plugin 0.3.29 and Paseo plugin 0.1.13, the same versions that the root Pi Agent image 0.3.20 ships, so the HA add-on, the PaaS image and the GitHub releases carry one plugin generation. Omnigent is still bound only from Settings → Omnigent; no setup conversation is created or opened. Plugin 0.3.29 words its status messages as "Settings → Omnigent" and adds no-op first-boot onboarding hooks for images that still call them.
+- Settings → Paseo keeps using the add-on's own bridge (`/api/paseo`, started from the home directory), so the fresh-install fix in Paseo 0.1.13 for Pi Web's own `/api/plugin-paseo` route does not change this add-on; the plugin is bundled to stay aligned.
+- Keep Pi Web 0.12.0, add-on options, ports, architectures, user sessions, provider credentials and authorized-host recovery. No migration is needed.
+
+## 0.15.15
+
+- Bundle Omnigent plugin 0.3.26 again, the same Settings-only plugin that the PaaS Pi Agent image `20261027.1105` ships. Installation, startup and restart bind only through Settings → Omnigent; no setup conversation is created or opened and the Settings link to one is gone. The runtime and tests return to the verified 0.15.13 behavior. Existing conversations, credentials, authorized-host recovery and model verification are unchanged.
+- Version 0.15.14 is withdrawn: it bundled plugin 0.3.27, which created a saved `Omnigent 連線設定` conversation and linked it from Settings. Updating to 0.15.15 removes the link; a conversation already saved by 0.15.14 is left in place and can be deleted from Pi Web.
+- Keep Pi Web 0.12.0, Paseo 0.1.12, add-on options, ports and architectures.
+
+## 0.15.14 (withdrawn)
+
+- Bundle Omnigent plugin 0.3.27. A fresh installation creates one retained `Omnigent 連線設定` conversation, with a direct link from Settings → Omnigent. Server URL, account and password remain in the masked Settings form; creating the conversation does not call a model.
+- Keep Pi Web 0.12.0, Paseo 0.1.12, existing sessions, provider credentials, add-on options, ports and architectures. The browser and image gates verify the new conversation and reuse on restart.
+
+## 0.15.13
+
+- Bundle checksum-verified Omnigent plugin 0.3.26. After native Pi provider login, an empty authenticated model cache is refreshed on catalog or verification requests so the model picker can show available choices.
+- Keep Pi Web 0.12.0, Paseo 0.1.12, the existing Settings pairing flow, add-on options, ports, architectures, user sessions and provider credentials. The runtime continues to use only engines already present in the image.
+
 ## 0.15.12
 
 - Bundle the verified Paseo 0.1.12 archive. Paseo registration and service recovery no longer create or open a setup conversation; pairing remains an explicit action in Settings → Paseo.

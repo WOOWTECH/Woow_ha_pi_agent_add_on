@@ -124,6 +124,13 @@ test('private HTTP bridge checks token, body, error redaction and HA prefix for 
   const badHeader = await (await fetch(base + '/omnigent', { headers: { 'X-Ingress-Path': '"><script>bad</script>' } })).text();
   assert.ok(!badHeader.includes('bad</script>'));
 });
+test('Settings bridge and UI never reference a setup conversation', () => {
+  const files = ['rootfs/usr/local/lib/pi-omnigent-ha/bridge.mjs', 'rootfs/usr/local/lib/pi-omnigent-ha/lifecycle.mjs',
+    'rootfs/usr/local/share/pi-omnigent-ha/app.js', 'rootfs/usr/local/share/pi-omnigent-ha/index.html'];
+  for (const file of files) {
+    assert.doesNotMatch(fs.readFileSync(path.join(root, file), 'utf8'), /onboarding|設定對話/i, `${file} must not reference a setup conversation`);
+  }
+});
 test('Pi wrapper preserves per-session provider directory across legacy env scripts', t => {
   const f = fixture(t); const cli = path.join(f.agentDir, 'cli.js');
   fs.writeFileSync(cli, 'console.log(process.env.PI_CODING_AGENT_DIR)');

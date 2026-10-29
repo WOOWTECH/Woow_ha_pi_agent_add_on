@@ -170,8 +170,8 @@ RUN apt-get update \
 # HA already ships a pinned official Claude CLI. The SDK falls back to PATH;
 # remove its duplicate binary before any runtime COPY creates an OCI layer.
 RUN /opt/omnigent/venv/bin/python -c 'from pathlib import Path; import claude_agent_sdk; p=Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude"; print("Removed duplicate Claude bytes:", p.stat().st_size if p.exists() else 0); p.unlink(missing_ok=True)'
-ARG PI_OMNIGENT_VERSION=0.3.24
-ARG PI_OMNIGENT_SHA256=adc92aecf53155f23943a774f02c6d6e41c9e05518e60fca4a151eee4b105b12
+ARG PI_OMNIGENT_VERSION=0.3.29
+ARG PI_OMNIGENT_SHA256=e5bba36758870c913c773702d52d0160e3a11fa9d82eeee19c5ca51c048ec9e7
 RUN curl --fail --silent --show-error --location --retry 3 \
       "https://github.com/WOOWTECH/pi-omnigent-plugin/releases/download/v${PI_OMNIGENT_VERSION}/woowtech-pi-omnigent-plugin-${PI_OMNIGENT_VERSION}.tgz" -o /tmp/plugin.tgz \
     && echo "${PI_OMNIGENT_SHA256}  /tmp/plugin.tgz" | sha256sum --check --strict \
@@ -182,8 +182,8 @@ RUN curl --fail --silent --show-error --location --retry 3 \
 # The HA bridge consumes the plugin API; never apply its Pi Web 0.10 overlay.
 # Build the daemon + fixed Expo client once for each native image architecture.
 FROM piweb-builder AS paseo-builder
-ARG PI_PASEO_VERSION=0.1.12
-ARG PI_PASEO_SHA256=35eb66d3674d913cfa8e0adb795c6bd1c62ea6819fef29f3fb3757e0d9aa9b17
+ARG PI_PASEO_VERSION=0.1.14
+ARG PI_PASEO_SHA256=523b60bc9d1562f8e4c8311f41a3e12e11671fb5913a1c6956a0893901c704cd
 RUN curl --fail --silent --show-error --location --retry 3 \
       "https://github.com/WOOWTECH/pi-paseo-plugin/releases/download/v${PI_PASEO_VERSION}/woowtech-pi-paseo-${PI_PASEO_VERSION}.tgz" -o /tmp/paseo.tgz \
     && echo "${PI_PASEO_SHA256}  /tmp/paseo.tgz" | sha256sum --check --strict \

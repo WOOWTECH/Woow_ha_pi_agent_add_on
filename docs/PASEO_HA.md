@@ -6,18 +6,19 @@ The native desktop tabs and mobile picker are MCP → Omnigent → Paseo.
 
 ## Immutable image inputs
 
-- Paseo plugin 0.1.12, source `6796e48c6b3cce06e75c86742ba7b5d3ac121855` (public release archive verified with
-  SHA256 `35eb66d3674d913cfa8e0adb795c6bd1c62ea6819fef29f3fb3757e0d9aa9b17`).
+- Paseo plugin 0.1.14, source `3698b517ccade215738c4ed0b7a00318aac608fa` (public release archive verified with
+  SHA256 `523b60bc9d1562f8e4c8311f41a3e12e11671fb5913a1c6956a0893901c704cd`).
 - Paseo daemon 0.11.2, locked runtime revision `0.11.2-r3-6d8dbe515479`.
 - Fixed web client 0.13.0-woow.1, source
   `68388f19198f1f696efe18906df42049e208d135`, stream repair
   `043aa8286b90418eb1f4e9982ca1a349c84f2a3d`, archive SHA256
   `7e7495f70f721e96e121f76bd91573150cf91aa112143d9f4d51a3fcf9dc8bce`.
-- Omnigent 0.3.24, source `2604e13`, public archive SHA256
-  `adc92aecf53155f23943a774f02c6d6e41c9e05518e60fca4a151eee4b105b12`.
-  HA 0.15.11 keeps authorized-host recovery and native Pi Web 0.12 settings;
-  Omnigent setup now runs only from Settings. The floating link and automatic
-  setup conversation are removed. Paseo pairing is available only through Settings.
+- Omnigent 0.3.29, source `b5fcbe8a315c9d635977848fde249447c9bf0a42`, public archive SHA256
+  `e5bba36758870c913c773702d52d0160e3a11fa9d82eeee19c5ca51c048ec9e7`.
+  HA 0.15.17 keeps authorized-host recovery and native Pi Web 0.12 settings;
+  Omnigent setup runs only from Settings. There is no floating link, setup
+  conversation or link to one (0.15.14, which had them, is withdrawn).
+  Paseo pairing is available only through Settings.
 
 The image builds daemon dependencies for amd64 and aarch64 and downloads the
 web client at build time, checking the plugin's manifest and checksum. First
@@ -71,7 +72,7 @@ and explicit disabling are retained. Package enable/disable/removal is observed
 without restarting Pi Web. A manual service pause survives container restart;
 shutdown stops the owned supervisor without persisting a user pause.
 
-Paseo 0.1.12 uses the r3 runtime with verified patches in both native 0.11.2
+Paseo 0.1.14 uses the r3 runtime with verified patches in both native 0.11.2
 PID-lock modules. All supported writers and recovery share one persistent
 Linux flock guard. Automatic recovery requires a private proof bound to the
 installation, home, lock inode and Linux process birth; a PID or process name
