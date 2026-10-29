@@ -160,6 +160,7 @@ try {
     assert.equal(await page.getByRole('link', { name: 'Paseo', exact: true }).count(), 0, 'no floating Paseo link on home');
     assert.equal((await context.request.get(base + '/omnigent/onboarding')).status(), 404);
     assert.equal((await context.request.get(base + '/omnigent/launcher.js')).status(), 404);
+    assert.equal((await context.request.get(base + '/paseo/launcher.js')).status(), 404, 'retired Paseo launcher route, not a 503 naming the errno');
     assertConversationHistory();
 
     if (viewport.width <= 640) {
