@@ -24,7 +24,8 @@ assert.equal(createHash('sha256').update(fs.readFileSync(tarball)).digest('hex')
   'OMNIGENT_PLUGIN_TGZ is the release pinned in cli-runtime/versions.json');
 const release = pins.omnigentPlugin.version;
 const SERVER = 'https://omnigent.example.test';
-const VIEW_KEYS = ['installed', 'active', 'version', 'phase', 'server', 'loginConfirmed', 'host', 'engines'];
+const VIEW_KEYS = ['installed', 'active', 'version', 'phase', 'server', 'loginConfirmed', 'host', 'issue', 'engines'];
+const ISSUE_KEYS = ['code', 'message', 'hints', 'action'];
 
 /** The add-on's data layout: PI_CODING_AGENT_DIR=/data/pi-agent, HOME inside it, the plugin in /opt. */
 function installation(t) {
@@ -103,6 +104,8 @@ test('fresh install: the image registers the released plugin and Settings reads 
   assert.equal(boot.lifecycle.reason, 'native-plugin-enabled');
   assert.equal(boot.enabled, true);
   assert.deepEqual(Object.keys(boot.view), VIEW_KEYS, 'the bridge projects only the safe Settings view');
+  // A status issue reaches the page as fixed fields only, never the plugin's details.
+  if (boot.view.issue !== null) assert.deepEqual(Object.keys(boot.view.issue), ISSUE_KEYS);
   assert.equal(boot.view.installed, true);
   assert.equal(boot.view.active, true);
   assert.equal(boot.view.version, release);
