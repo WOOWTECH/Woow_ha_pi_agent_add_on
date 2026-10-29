@@ -1,0 +1,17 @@
+{
+  "_note": "The only place these bundled versions are written. The Dockerfile (stage pins), the CI test job and the tests read this file; claude/ and codex/ package locks and omnigent/requirements.* must pin the same versions (tests/versions.test.mjs). Pi Web stays pinned with its settings patch, Paseo in the Dockerfile.",
+  "omnigentPlugin": {
+    "version": "0.3.29",
+    "url": "https://github.com/WOOWTECH/pi-omnigent-plugin/releases/download/v0.3.29/woowtech-pi-omnigent-plugin-0.3.29.tgz",
+    "sha256": "e5bba36758870c913c773702d52d0160e3a11fa9d82eeee19c5ca51c048ec9e7"
+  },
+  "omnigent": {
+    "version": "0.16.0"
+  },
+  "claude": {
+    "version": "2.1.296"
+  },
+  "codex": {
+    "version": "0.162.1"
+  }
+}

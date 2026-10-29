@@ -73,6 +73,45 @@ temporary private home; no daemon, provider, pairing or model call is started
 by this native writer probe. The surrounding smoke retains its onboarding,
 registration/removal, CLI and fixed-client checks.
 
+## Version pins and the released Omnigent plugin
+
+`cli-runtime/versions.json` is the only place the bundled Omnigent plugin
+(version, release URL, sha256), Omnigent CLI, Claude Code and Codex versions
+are written. The Dockerfile's `pins` stage splits it into one file per pin, the
+CI test job reads it with `jq`, and the image smoke reads the image's copy at
+`/usr/local/share/woow-ha-pi-agent/versions.json`. `tests/versions.test.mjs`
+checks that the Claude/Codex package locks, the hash-locked Omnigent
+requirements and the reminder patch's validated version agree with it, and
+that the Dockerfile, CI and image checks do not repeat the values. Among the
+build and test inputs, a plugin bump changes only this file; a CLI bump also
+regenerates that CLI's lock. Pi Web stays pinned by the settings patch's
+artifact hashes and Paseo by its Dockerfile ARGs.
+
+`tests/omnigent-contract.test.mjs` drives the released plugin tarball through
+this repository's seed, lifecycle and Settings bridge in about ten seconds,
+before any image build: a fresh install, a same-path image upgrade that must
+keep the confirmed login and receipts, and a switch between the image bundle
+and a git install. Each add-on start runs `tests/omnigent-plugin-boot.mjs` in a
+new process, which mirrors the launcher's package activation without the boot
+worker; no server, login, network or Omnigent CLI is used.
+
+```sh
+url="$(jq -r .omnigentPlugin.url cli-runtime/versions.json)"
+curl -fLsS "$url" -o /tmp/omnigent-plugin.tgz   # then check the sha256 pin
+OMNIGENT_PLUGIN_TGZ=/tmp/omnigent-plugin.tgz PI_WEB_ROOT=/path/to/pi-web/package \
+  node --test tests/versions.test.mjs tests/omnigent-contract.test.mjs
+```
+
+`PI_WEB_ROOT` is the official Pi Web package with the production dependencies
+the CI step installs. A Pi Web session that loaded the extension from a
+previous plugin root is outside this contract.
+
+The Omnigent system-reminder patch in `patches/omnigent-reminder-patch/` is a
+byte-identical copy of the PaaS image's (paas-odoo-ci
+`pi-agent/omnigent-reminder-patch`). The image build applies it with `--strict`
+and runs `patches/tests/omnigent-reminder-patch.test.py` against the patched
+package; a different Omnigent version or a moved anchor fails the build.
+
 ## Local source-build context
 
 PR image builds use the Store downloader from the workflow's pinned
