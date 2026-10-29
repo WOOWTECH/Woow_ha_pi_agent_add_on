@@ -108,5 +108,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
     try { process.kill(-child.pid, 'SIGKILL'); } catch {}
   }
+  // A process outside the group could still hold the log pipe; never wait on it.
+  child?.stdout?.destroy(); child?.stderr?.destroy();
   fs.rmSync(temporary, { recursive: true, force: true });
 }
