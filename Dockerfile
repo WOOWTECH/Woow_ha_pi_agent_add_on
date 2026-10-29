@@ -170,6 +170,20 @@ RUN apt-get update \
 # HA already ships a pinned official Claude CLI. The SDK falls back to PATH;
 # remove its duplicate binary before any runtime COPY creates an OCI layer.
 RUN /opt/omnigent/venv/bin/python -c 'from pathlib import Path; import claude_agent_sdk; p=Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude"; print("Removed duplicate Claude bytes:", p.stat().st_size if p.exists() else 0); p.unlink(missing_ok=True)'
+# Claude Code writes its <system-reminder> context (CLAUDE.md, the memory index,
+# task notifications) into the person's own transcript record, and Omnigent
+# mirrors every block: the web chat shows a ~19 KB reminder bubble, the session
+# title is generated from it, and api-request-blob copies show every message
+# twice. This is the PaaS image's patch (paas-odoo-ci
+# pi-agent/omnigent-reminder-patch, byte-identical copy). It is version-gated
+# and exact-anchor, so moving the Omnigent pin or an anchor drift fails the
+# build; its unit tests then run against the patched package.
+COPY patches/omnigent-reminder-patch/ /opt/patches/omnigent-reminder-patch/
+COPY patches/tests/omnigent-reminder-patch.test.py /opt/patches/tests/omnigent-reminder-patch.test.py
+RUN SITE_PACKAGES="$(/opt/omnigent/venv/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" \
+    && /opt/omnigent/venv/bin/python /opt/patches/omnigent-reminder-patch/omnigent-reminder-patch.py --site-packages "${SITE_PACKAGES}" --strict \
+    && /opt/omnigent/venv/bin/python /opt/patches/tests/omnigent-reminder-patch.test.py \
+    && grep -q 'omnigent-reminder-patch v2' "${SITE_PACKAGES}/omnigent/harnesses/claude_native/bridge.py"
 ARG PI_OMNIGENT_VERSION=0.3.29
 ARG PI_OMNIGENT_SHA256=e5bba36758870c913c773702d52d0160e3a11fa9d82eeee19c5ca51c048ec9e7
 RUN curl --fail --silent --show-error --location --retry 3 \

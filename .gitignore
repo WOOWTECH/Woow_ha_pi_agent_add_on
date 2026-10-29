@@ -4,3 +4,4 @@ options.json
 *.pem
 .env
 .DS_Store
+__pycache__/
