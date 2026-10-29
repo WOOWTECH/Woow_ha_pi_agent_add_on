@@ -1,0 +1,22 @@
+name: Release train
+
+# woow release train: compare this repository's upstream version pins with the version manifest
+# shared by HA and the WOOW PaaS (Gitea woow-paas/woow-release-train, public mirror
+# WOOWTECH/woow-release-train). What fails is decided by the manifest's `enforcement`, not here.
+# Compared: the Pi Omnigent plugin (version and release sha256) and the Omnigent CLI version from
+# cli-runtime/versions.json, and the CLI's hash-locked requirements. The plugin's minimum version is
+# a hard rule; in phase 1 only hard rules block, every other finding is a warning.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Release train
+    uses: WOOWTECH/woow-release-train/.github/workflows/wvt-check.yml@main
