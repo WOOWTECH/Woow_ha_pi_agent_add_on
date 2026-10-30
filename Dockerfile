@@ -330,9 +330,11 @@ RUN ln -s /usr/local/lib/node_modules/@agegr/pi-web/node_modules /opt/woow/pi-pa
     && ln -s /opt/woow/pi-paseo-plugin/bin/cli.mjs /usr/local/bin/pi-paseo \
     && chmod +x /opt/woow/pi-paseo-plugin/bin/cli.mjs
 
+# /usr/local/bin/pi-omnigent comes from rootfs: a wrapper that refuses the
+# plugin's Pi Web 0.10 setup commands (install-ui, activate, install-host,
+# launch-web) and passes the others to bin/cli.mjs.
 RUN ln -s /usr/local/lib/node_modules/@agegr/pi-web/node_modules /opt/woow/pi-omnigent-plugin/node_modules \
     && ln -s /opt/omnigent/venv/bin/omnigent /usr/local/bin/omnigent \
-    && ln -s /opt/woow/pi-omnigent-plugin/bin/cli.mjs /usr/local/bin/pi-omnigent \
     && chmod +x /opt/woow/pi-omnigent-plugin/bin/cli.mjs \
     && /opt/omnigent/venv/bin/omnigent --version
 
@@ -380,9 +382,11 @@ RUN chmod +x \
       /usr/local/bin/pi \
       /usr/local/bin/claude \
       /usr/local/bin/codex \
+      /usr/local/bin/pi-omnigent \
       /usr/local/bin/pi-agent-share-state.mjs \
     && sh -n /usr/local/bin/claude \
     && sh -n /usr/local/bin/codex \
+    && sh -n /usr/local/bin/pi-omnigent \
     # Codex 0.162 runs `ps` to manage its background app-server; without
     # procps a plain `codex` exits before the sign-in screen.
     && command -v ps \
