@@ -15,10 +15,19 @@ release mechanism is described in the Woow_HA_App_Store README (section
    Release. It also runs the upgrade test (pipeline #143): the Release's image,
    then this PR's amd64 image on the same data directories, under a mock
    Supervisor; the new version must start (here: the watchdog `/api/home` on
-   port 30142 answers and the container stays up). For now it checks startup
-   only, not data. Data-check hooks, when added, go in `upgrade-check/`; their
-   interface is defined by pipeline #138 and will be documented in the
-   Woow_HA_App_Store README. A PR that changes no version passes it in seconds.
+   port 30142 answers and the container stays up). The Store registry currently
+   skips this upgrade test (pipeline #158); it runs once #158 removes the skip.
+   Do not write `skip_upgrade_test` in `upgrade-check/settings.yaml`: only the
+   registry approves a skip. When it runs, it checks startup only, not data. To
+   check data, add hooks in `upgrade-check/`: `seed` writes data on the
+   Release, `verify` checks it on this PR's image. Their interface
+   (environment, JSON report) is in the Woow_HA_App_Store README,
+   "第 2 類 升級測試", paragraph "資料檢查（#138）". Keep the hooks executable
+   (`git update-index --chmod=+x`), with LF endings and a `#!` of python3 or
+   busybox sh only (no bash): they run in the Store's python:3.12-alpine mock
+   Supervisor container, so never `docker run` from them. An optional
+   `upgrade-check/settings.yaml` sets `startup_timeout`, `stable_seconds` and
+   `hook_timeout` (seconds). A PR that changes no version passes it in seconds.
    The result is in the job summary. To re-run it, use "Re-run all jobs", not
    "Re-run failed jobs": a re-run judges its own build, and an earlier
    attempt's SBOM and image are not used.

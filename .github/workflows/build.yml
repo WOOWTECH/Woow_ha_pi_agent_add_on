@@ -46,9 +46,10 @@ jobs:
         ADDON_VERSION: ${{ steps.meta.outputs.version }}
         ADDON_ARCH: ${{ matrix.arch }}
       run: python3 .sync-tooling/.addon-sync/pi_image_reuse.py --arch "$ADDON_ARCH" --version "$ADDON_VERSION"
-    # The PR holds three copies of the amd64 image at once: the loaded
-    # image, Syft's docker save for the SBOM and the addon-image docker save
-    # for the upgrade test. The runner's free space ran out (#143), so remove
+    # At its peak the PR holds about two copies of the amd64 image: the
+    # loaded image and one docker save of it (Syft deletes its save for the
+    # SBOM after scanning, then addon-image saves it again for the upgrade
+    # test). The runner's free space ran out (#143), so remove
     # preinstalled toolchains this job never uses, as hermes's candidate job
     # does; df shows the space before and after.
     - name: Free disk space
