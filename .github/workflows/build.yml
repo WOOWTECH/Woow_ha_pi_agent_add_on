@@ -117,6 +117,16 @@ jobs:
       with:
         component: woow_ha_pi_agent
         image: ghcr.io/woowtech/woow-ha-pi-agent-amd64:${{ steps.meta.outputs.version }}
+    # The same image is the new version of the upgrade test (pipeline
+    # #143, category 2): saved and uploaded as artifact
+    # upgrade-comparison-image-woow_ha_pi_agent-attempt-<run attempt>,
+    # so the comparison neither rebuilds it nor needs a PR tag on GHCR.
+    - name: Image for the upgrade test
+      if: github.event_name == 'pull_request' && matrix.arch == 'amd64'
+      uses: WOOWTECH/Woow_HA_App_Store/.github/actions/addon-image@main
+      with:
+        component: woow_ha_pi_agent
+        image: ghcr.io/woowtech/woow-ha-pi-agent-amd64:${{ steps.meta.outputs.version }}
     - name: Retain local source-build evidence
       if: always() && github.event_name == 'pull_request'
       uses: actions/upload-artifact@v4
@@ -146,6 +156,10 @@ jobs:
   # (actions: read) and fails if Build (amd64) never uploads it. On push the
   # job passes at once, so this workflow's non-PR run (registry
   # required_workflows) still succeeds. Reported as "Upgrade comparison / compare".
+  # The upgrade test (#137, #143) starts the Release's GHCR image, then this
+  # PR's image (the amd64 build's image artifact) on the same /data and map
+  # directories; a new version that does not start blocks. Startup only, no
+  # data check yet. After a version bump it also waits for this run's image.
   upgrade-comparison:
     name: Upgrade comparison
     permissions:
@@ -154,6 +168,7 @@ jobs:
     uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-upgrade-check.yml@main
     with:
       sbom_artifact: upgrade-comparison-sbom-*
+      image_artifact: upgrade-comparison-image-*
   # The App Store ships only published Releases (registry ref_policy: release).
   # After the checks above pass on main, the Store's shared workflow publishes
   # the Release for a config.yaml version that has none yet.
