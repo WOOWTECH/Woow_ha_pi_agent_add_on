@@ -177,8 +177,9 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-upgrade-check.yml@main
+    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-upgrade-check.yml@feat/158-host-network
     with:
+      tooling_ref: feat/158-host-network
       sbom_artifact: upgrade-comparison-sbom-*
       image_artifact: upgrade-comparison-image-*
   # The App Store ships only published Releases (registry ref_policy: release).
