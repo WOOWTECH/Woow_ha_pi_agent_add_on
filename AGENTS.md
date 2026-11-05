@@ -25,12 +25,16 @@ release mechanism is described in the Woow_HA_App_Store README (section
    "第 2 類 升級測試", paragraph "資料檢查（#138）". Keep the hooks executable
    (`git update-index --chmod=+x`), with LF endings and a `#!` of python3 or
    busybox sh only (no bash): they run in the Store's python:3.12-alpine mock
-   Supervisor container, so never `docker run` from them. An optional
-   `upgrade-check/settings.yaml` sets `startup_timeout`, `stable_seconds` and
-   `hook_timeout` (seconds). A PR that changes no version passes it in seconds.
-   The result is in the job summary. To re-run it, use "Re-run all jobs", not
-   "Re-run failed jobs": a re-run judges its own build, and an earlier
-   attempt's SBOM and image are not used.
+   Supervisor container, so never `docker run` from them. A hook must not
+   leave background processes running when it exits, and a hook file must not
+   be a symlink to anything outside `upgrade-check/` (only that directory is
+   mounted). An optional `upgrade-check/settings.yaml` sets `startup_timeout`,
+   `stable_seconds` and `hook_timeout` (positive integer seconds);
+   `hook_timeout` defaults to 600 and covers the whole `docker exec` of a
+   hook. A PR that changes no version passes it in seconds. The result is in
+   the job summary. To re-run it, use "Re-run all jobs", not "Re-run failed
+   jobs": a re-run judges its own build, and an earlier attempt's SBOM and
+   image are not used.
 3. **Breaking changes must be declared in `upgrade-notes.yaml`** next to the
    addon's `config.yaml` (here the repository root). Create the file only when
    the upgrade comparison asks for it; copy `change` and `key` from its report
