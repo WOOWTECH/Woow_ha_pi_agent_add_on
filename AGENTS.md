@@ -15,10 +15,11 @@ release mechanism is described in the Woow_HA_App_Store README (section
    Release. It also runs the upgrade test (pipeline #143): the Release's image,
    then this PR's amd64 image on the same data directories, under a mock
    Supervisor; the new version must start (here: the watchdog `/api/home` on
-   port 30142 answers and the container stays up). The Store registry currently
-   skips this upgrade test (pipeline #158); it runs once #158 removes the skip.
-   Do not write `skip_upgrade_test` in `upgrade-check/settings.yaml`: only the
-   registry approves a skip. When it runs, it checks startup only, not data. To
+   port 30142 answers and the container stays up). Because of `host_network:
+   true`, the test runs the addon in the runner's host network namespace, as
+   Supervisor does, so nginx can bind the bridge gateway `172.30.32.1` (pipeline
+   #158). Do not write `skip_upgrade_test` in `upgrade-check/settings.yaml`: only
+   the registry approves a skip. It checks startup only, not data. To
    check data, add hooks in `upgrade-check/`: `seed` writes data on the
    Release, `verify` checks it on this PR's image. Their interface
    (environment, JSON report) is in the Woow_HA_App_Store README,
