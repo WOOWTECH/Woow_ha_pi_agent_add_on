@@ -252,7 +252,7 @@ RUN curl --fail --silent --show-error --location --retry 3 "$(< /tmp/pins/omnige
 # Build the daemon + fixed Expo client once for each native image architecture.
 FROM piweb-builder AS paseo-builder
 ARG PI_PASEO_VERSION=0.1.17
-ARG PI_PASEO_SHA256=1d4f0e9dc08ee73f9935dbff054f2854f77c2b80aedc7f81c3cc527481885fd8
+ARG PI_PASEO_SHA256=ef08edfa18cd3f71d8e50cc22329ee7c143632e04338f16c7188ae848f5c8170
 # Unpublished reviewable candidate: use the exact checked archive in this branch.
 COPY candidate-packages/woowtech-pi-paseo-0.1.17.tgz /tmp/paseo.tgz
 RUN echo "${PI_PASEO_SHA256}  /tmp/paseo.tgz" | sha256sum --check --strict \
@@ -265,7 +265,7 @@ RUN echo "${PI_PASEO_SHA256}  /tmp/paseo.tgz" | sha256sum --check --strict \
 # Disable npm lifecycle scripts: seed under the persistent provider HOME at boot.
 FROM piweb-builder AS shared-runtime-builder
 ARG PI_SHARED_RUNTIME_VERSION=0.1.5
-ARG PI_SHARED_RUNTIME_SHA256=68ba472e3292341911e2041e3e4c19f46ea38aaca13b96728ac874cbb6e97240
+ARG PI_SHARED_RUNTIME_SHA256=eb6e2056c5523307331f40e1c3a61d552315ef743abfda42a44f7228d6f86a96
 COPY candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz /tmp/shared-runtime.tgz
 RUN echo "${PI_SHARED_RUNTIME_SHA256}  /tmp/shared-runtime.tgz" | sha256sum --check --strict \
     && mkdir -p /opt/woow/pi-agent-shared-runtime \

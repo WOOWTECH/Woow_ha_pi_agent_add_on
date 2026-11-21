@@ -9,8 +9,8 @@ coordinated consumer updates and the normal release gates.
 
 | Input | Candidate version | SHA-256 |
 | --- | --- | --- |
-| `@woowtech/pi-agent-shared-runtime` | 0.1.5 | `68ba472e3292341911e2041e3e4c19f46ea38aaca13b96728ac874cbb6e97240` |
-| `@woowtech/pi-paseo` (Agent Connect) | 0.1.17 | `1d4f0e9dc08ee73f9935dbff054f2854f77c2b80aedc7f81c3cc527481885fd8` |
+| `@woowtech/pi-agent-shared-runtime` | 0.1.5 | `eb6e2056c5523307331f40e1c3a61d552315ef743abfda42a44f7228d6f86a96` |
+| `@woowtech/pi-paseo` (Agent Connect) | 0.1.17 | `ef08edfa18cd3f71d8e50cc22329ee7c143632e04338f16c7188ae848f5c8170` |
 
 HA retains official Pi Web 0.12.0 with its independent Ingress bridge. Its
 existing Omnigent plugin 0.3.31 pin is unchanged because it does not consume
@@ -53,6 +53,25 @@ Supervisor/provider acceptance remain pending; k3s/PaaS acceptance is separate.
 Final source verification (2026-11-21): Agent Connect bridge/UI20/20; shipped
 shared helper3/3 against the final archive; legacy state migration, provider
 wrappers and image-layer contract scripts pass. Node syntax, workflow YAML and
-diff whitespace checks pass. Local helper execution used Pi SDK1.0; added CI and
-image gates deliberately exercise HA's SDK1.1 before release. No add-on version
+diff whitespace checks pass. The refreshed archive passes local helper tests against HA's exact SDK1.1;
+image gates also exercise that SDK before release. No add-on version
 was changed and no Supervisor image/upgrade was deployed in this source work.
+
+## Candidate refresh after live acceptance
+
+The shared runtime now excludes its own generated skill aliases before the SDK
+selects authoritative package sources. Repeated synchronization keeps enabled
+skills present, while removal, disablement and project overrides remain effective.
+The frozen archive passes nine resource authority/boundary regressions against
+both the native SDK 1.0 graph and HA's exact SDK 1.1 graph. Native helper and
+alternate-agent-directory tests pass 16/16; the HA helper passes 3/3. These tests
+are also required by each distribution's CI.
+
+Agent Connect now uses persistent SQLite guards on macOS; Linux retains flock.
+Actual Apple Silicon (Node 22.23.4) and Intel (Node 22.19.0) CI passed OS-lock,
+state and onboarding tests, plus real daemon start, stop, restart and identity
+retention. The macOS lifecycle uses no provider credentials or model turns.
+[Mac verification run](https://github.com/WOOWTECH/pi-paseo-plugin/actions/runs/44867850835)
+does not substitute for signed-installer or interactive provider acceptance.
+Darwin stale daemon recovery remains conservative; this patch does not claim
+Linux PID-birth recovery on macOS. Windows uses the supported WSL2 Linux path.

@@ -200,11 +200,12 @@ jobs:
           @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0
     - name: Verify shared runtime migration against the image SDK
       run: |
-        echo "68ba472e3292341911e2041e3e4c19f46ea38aaca13b96728ac874cbb6e97240  candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz" | sha256sum --check --strict
+        echo "eb6e2056c5523307331f40e1c3a61d552315ef743abfda42a44f7228d6f86a96  candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz" | sha256sum --check --strict
         mkdir -p "$RUNNER_TEMP/shared-runtime"
         tar -xzf candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz --strip-components=1 -C "$RUNNER_TEMP/shared-runtime"
         npm ci --prefix "$RUNNER_TEMP/shared-runtime" --omit=dev --legacy-peer-deps --ignore-scripts --no-audit --no-fund
         SHARED_RUNTIME_TEST_BUNDLE="$RUNNER_TEMP/shared-runtime" PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test tests/shared-distribution.test.mjs
+        PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test "$RUNNER_TEMP/shared-runtime/tests/resource-authority.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/resource-boundary.test.mjs"
     # The released plugin from cli-runtime/versions.json, driven by the add-on's
     # seed, lifecycle and Settings bridge in seconds, before any image build:
     # fresh install, same-path upgrade and a plugin source switch.
@@ -224,7 +225,7 @@ jobs:
         node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
         node patches/patch-omnigent-settings.mjs "$RUNNER_TEMP/pi-web-native/package"
         cp candidate-packages/woowtech-pi-paseo-0.1.17.tgz "$RUNNER_TEMP/paseo.tgz"
-        echo "1d4f0e9dc08ee73f9935dbff054f2854f77c2b80aedc7f81c3cc527481885fd8  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
+        echo "ef08edfa18cd3f71d8e50cc22329ee7c143632e04338f16c7188ae848f5c8170  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
         mkdir -p "$RUNNER_TEMP/pi-paseo"
         tar -xzf "$RUNNER_TEMP/paseo.tgz" --strip-components=1 -C "$RUNNER_TEMP/pi-paseo"
         export PASEO_PLUGIN_ROOT="$RUNNER_TEMP/pi-paseo"
