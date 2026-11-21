@@ -9,7 +9,7 @@ coordinated consumer updates and the normal release gates.
 
 | Input | Candidate version | SHA-256 |
 | --- | --- | --- |
-| `@woowtech/pi-agent-shared-runtime` | 0.1.5 | `eb6e2056c5523307331f40e1c3a61d552315ef743abfda42a44f7228d6f86a96` |
+| `@woowtech/pi-agent-shared-runtime` | 0.1.5 | `f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea` |
 | `@woowtech/pi-paseo` (Agent Connect) | 0.1.17 | `ef08edfa18cd3f71d8e50cc22329ee7c143632e04338f16c7188ae848f5c8170` |
 
 HA retains official Pi Web 0.12.0 with its independent Ingress bridge. Its
@@ -43,29 +43,37 @@ before upgrading from the former directory-lock implementation to SQLite locks,
 then restart sessions to load new resource configuration. No native transcripts
 are imported automatically.
 
-Validation is source-only: the exact archive was installed with production
-npm options into a scratch native install; actual shipped helper tests pass for
-fresh, disabled and removed choices. HA legacy sync and wrapper regressions
-still pass. The shared package's distribution suite covers legacy MCP ownership,
-user skills and common memory paths. Real macOS, Ubuntu, Windows/WSL2 and HA
-Supervisor/provider acceptance remain pending; k3s/PaaS acceptance is separate.
+## Extension-free resource scans and current validation
 
-Final source verification (2026-11-21): Agent Connect bridge/UI20/20; shipped
-shared helper3/3 against the final archive; legacy state migration, provider
-wrappers and image-layer contract scripts pass. Node syntax, workflow YAML and
-diff whitespace checks pass. The refreshed archive passes local helper tests against HA's exact SDK1.1;
-image gates also exercise that SDK before release. No add-on version
-was changed and no Supervisor image/upgrade was deployed in this source work.
+Shared source `8009ba9c77148b8d329d3660cca31c4da91e435c` is frozen as the
+`f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea` archive
+listed above. Consumers copy these exact bytes without repacking. The source
+receipt reports 61/61 tests and audit zero; its previous archive's image and SDK
+results do not establish acceptance of this replacement.
 
-## Candidate refresh after live acceptance
+`loadResources` resolves authoritative skills without importing package, global
+or project extensions. The explicit bridge runtime loads only its MCP adapter.
+Resource scans and `run-cli` leave normal provider children with their original
+extension flags. Distribution helpers additionally scope bridge mode to the
+short-lived helper, preserving the actual Pi CLI environment and credentials.
 
-The shared runtime now excludes its own generated skill aliases before the SDK
-selects authoritative package sources. Repeated synchronization keeps enabled
-skills present, while removal, disablement and project overrides remain effective.
-The frozen archive passes nine resource authority/boundary regressions against
-both the native SDK 1.0 graph and HA's exact SDK 1.1 graph. Native helper and
-alternate-agent-directory tests pass 16/16; the HA helper passes 3/3. These tests
-are also required by each distribution's CI.
+Fresh local frozen-archive checks pass 21/21 on native SDK1.0 and HA SDK1.1:
+resource authority/boundary (9), extension scans/boot/watcher/provider child
+control (10), bridge isolation (1), and a real stdio MCP call (1). Shipped native
+helper/wrapper tests pass 18/18; HA helpers pass 4/4. These are SDK fixture and
+resource tests, not authenticated provider/model conversations.
+
+Native CI requires this 21-case suite using its pinned Pi Web dependency graph.
+HA CI requires the same suite on its production SDK1.1 graph; both amd64 and
+aarch64 final-image builds also run it with networking disabled, alongside the
+shipped-helper tests. Replacement-archive CI results must be checked on the
+current draft head; earlier green runs for `55564c5`/`ff08ddf` used the old shared
+archive and are historical evidence only.
+
+Actual macOS, Ubuntu, Windows/WSL2 and HA Supervisor/provider acceptance remain
+pending. HA addon version is unchanged: a successful no-version-change upgrade
+comparison does not exercise a Supervisor upgrade. The current HA connector's
+`/addons` call returned `Unknown command`, so installed-addon access is unconfirmed.
 
 Agent Connect now uses persistent SQLite guards on macOS; Linux retains flock.
 Actual Apple Silicon (Node 22.23.4) and Intel (Node 22.19.0) CI passed OS-lock,

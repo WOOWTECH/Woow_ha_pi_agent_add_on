@@ -265,7 +265,7 @@ RUN echo "${PI_PASEO_SHA256}  /tmp/paseo.tgz" | sha256sum --check --strict \
 # Disable npm lifecycle scripts: seed under the persistent provider HOME at boot.
 FROM piweb-builder AS shared-runtime-builder
 ARG PI_SHARED_RUNTIME_VERSION=0.1.5
-ARG PI_SHARED_RUNTIME_SHA256=eb6e2056c5523307331f40e1c3a61d552315ef743abfda42a44f7228d6f86a96
+ARG PI_SHARED_RUNTIME_SHA256=f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea
 COPY candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz /tmp/shared-runtime.tgz
 RUN echo "${PI_SHARED_RUNTIME_SHA256}  /tmp/shared-runtime.tgz" | sha256sum --check --strict \
     && mkdir -p /opt/woow/pi-agent-shared-runtime \
@@ -448,6 +448,12 @@ RUN --network=none sed 's/listen 172.30.32.1:30142/listen 127.0.0.1:30142/' /etc
     && timeout 120s node /tmp/paseo-image-smoke.mjs \
     && SHARED_RUNTIME_TEST_BUNDLE=/opt/woow/pi-agent-shared-runtime SHARED_DISTRIBUTION_HELPER=/usr/local/bin/pi-agent-share-state.mjs \
        timeout 120s node --test /tmp/shared-distribution.test.mjs /tmp/shared-sync-only.test.mjs \
+    && timeout 180s node --test \
+       /opt/woow/pi-agent-shared-runtime/tests/resource-authority.test.mjs \
+       /opt/woow/pi-agent-shared-runtime/tests/resource-boundary.test.mjs \
+       /opt/woow/pi-agent-shared-runtime/tests/extension-scan.test.mjs \
+       /opt/woow/pi-agent-shared-runtime/tests/bridge.test.mjs \
+       /opt/woow/pi-agent-shared-runtime/tests/mcp-adapter.test.mjs \
     && rm /tmp/omnigent-image-smoke.mjs /tmp/paseo-image-smoke.mjs /tmp/paseo-native-runtime.mjs /tmp/shared-distribution.test.mjs /tmp/shared-sync-only.test.mjs
 
 # SHELL is what pi-web 0.9.0's browser terminal spawns:

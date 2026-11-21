@@ -200,12 +200,12 @@ jobs:
           @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0
     - name: Verify shared runtime migration against the image SDK
       run: |
-        echo "eb6e2056c5523307331f40e1c3a61d552315ef743abfda42a44f7228d6f86a96  candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz" | sha256sum --check --strict
+        echo "f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea  candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz" | sha256sum --check --strict
         mkdir -p "$RUNNER_TEMP/shared-runtime"
         tar -xzf candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz --strip-components=1 -C "$RUNNER_TEMP/shared-runtime"
         npm ci --prefix "$RUNNER_TEMP/shared-runtime" --omit=dev --legacy-peer-deps --ignore-scripts --no-audit --no-fund
         SHARED_RUNTIME_TEST_BUNDLE="$RUNNER_TEMP/shared-runtime" PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test tests/shared-distribution.test.mjs tests/shared-sync-only.test.mjs
-        PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test "$RUNNER_TEMP/shared-runtime/tests/resource-authority.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/resource-boundary.test.mjs"
+        PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test "$RUNNER_TEMP/shared-runtime/tests/resource-authority.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/resource-boundary.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/extension-scan.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/bridge.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/mcp-adapter.test.mjs"
     # The released plugin from cli-runtime/versions.json, driven by the add-on's
     # seed, lifecycle and Settings bridge in seconds, before any image build:
     # fresh install, same-path upgrade and a plugin source switch.
