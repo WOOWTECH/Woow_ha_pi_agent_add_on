@@ -11,6 +11,10 @@ const home = process.env.HOME || path.join(data, "home");
 // the legacy writer after that decision. HOME stays the provider caller's.
 const bundle = process.env.PI_SHARED_RUNTIME_BUNDLE_DIR || '/opt/woow/pi-agent-shared-runtime';
 if (bundle && existsSync(path.join(bundle, 'src/distribution.mjs'))) {
+  // This short-lived helper shares resources, not a Pi session. Bridge mode
+  // keeps SDK skill authority while suppressing user extensions and the shared
+  // extension's launcher/bootstrap. It cannot change the parent CLI environment.
+  process.env.PI_SHARED_BRIDGE = '1';
   const { synchronizeDistribution } = await import(pathToFileURL(path.join(bundle, 'src/distribution.mjs')).href);
   const canonicalData = process.env.PI_SHARED_DATA_DIR || data;
   const result = await synchronizeDistribution({ loc: { home, data: canonicalData, state: path.join(canonicalData, 'shared-runtime') } });

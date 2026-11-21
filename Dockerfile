@@ -406,6 +406,7 @@ COPY tests/omnigent-image-smoke.mjs /tmp/omnigent-image-smoke.mjs
 COPY tests/paseo-image-smoke.mjs /tmp/paseo-image-smoke.mjs
 COPY tests/paseo-native-runtime.mjs /tmp/paseo-native-runtime.mjs
 COPY tests/shared-distribution.test.mjs /tmp/shared-distribution.test.mjs
+COPY tests/shared-sync-only.test.mjs /tmp/shared-sync-only.test.mjs
 
 # rootfs COPY doesn't reliably preserve +x on files created outside a POSIX
 # filesystem. Explicitly re-mark every executable we ship so s6-overlay's
@@ -446,8 +447,8 @@ RUN --network=none sed 's/listen 172.30.32.1:30142/listen 127.0.0.1:30142/' /etc
     && timeout 300s node /tmp/omnigent-image-smoke.mjs \
     && timeout 120s node /tmp/paseo-image-smoke.mjs \
     && SHARED_RUNTIME_TEST_BUNDLE=/opt/woow/pi-agent-shared-runtime SHARED_DISTRIBUTION_HELPER=/usr/local/bin/pi-agent-share-state.mjs \
-       timeout 120s node --test /tmp/shared-distribution.test.mjs \
-    && rm /tmp/omnigent-image-smoke.mjs /tmp/paseo-image-smoke.mjs /tmp/paseo-native-runtime.mjs /tmp/shared-distribution.test.mjs
+       timeout 120s node --test /tmp/shared-distribution.test.mjs /tmp/shared-sync-only.test.mjs \
+    && rm /tmp/omnigent-image-smoke.mjs /tmp/paseo-image-smoke.mjs /tmp/paseo-native-runtime.mjs /tmp/shared-distribution.test.mjs /tmp/shared-sync-only.test.mjs
 
 # SHELL is what pi-web 0.9.0's browser terminal spawns:
 #     process.env.SHELL || "/bin/sh"   with argv ["-l"]
