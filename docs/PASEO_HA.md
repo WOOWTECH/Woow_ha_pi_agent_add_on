@@ -18,7 +18,7 @@ Saving a target does not interrupt a running conversation: stop and start the
 service when convenient to apply the new target, then generate a fresh link.
 
 This source candidate pins the locally packed, unpublished Agent Connect
-0.1.17 archive. Its exact checksum is recorded below and in
+0.1.18 archive. Its exact checksum is recorded below and in
 `AGENT_CONNECT_CANDIDATE.md`. Builds that fetch the public URL must wait for
 that exact artifact to be published. The selector remains disabled with an
 upgrade message when a user-selected older plugin lacks target support.
@@ -27,9 +27,9 @@ publication. Existing paths and package identity remain compatible.
 
 ## Immutable image inputs
 
-- Agent Connect plugin 0.1.17, unpublished local candidate archive
-  SHA256 `fa7366760534580e313a9fea35e03d7b7088a513c4891178d242584d31e61e8e`.
-- Paseo daemon 0.11.2, locked runtime revision `0.11.2-r3-6d8dbe515479`.
+- Agent Connect plugin 0.1.18, unpublished local candidate archive
+  SHA256 `18866e16ebf384e1c677c3654f7cfcde1010ef5e82f9d68f4e8dc115d0c602c0`.
+- Paseo daemon 0.11.2, locked runtime revision `0.11.2-r4-4cf9d40940bf`.
 - Fixed web client 0.13.0-woow.1, source
   `68388f19198f1f696efe18906df42049e208d135`, stream repair
   `043aa8286b90418eb1f4e9982ca1a349c84f2a3d`, archive SHA256
@@ -109,7 +109,10 @@ but cannot be tied to its original process remains rejected without trusted
 proof and needs ownership diagnosis. Recovery does not delete that record
 or signal the foreign process. Native 0.11.2 dead-process and cross-boot checks
 remain in place. The image
-bundles r3 only; it does not copy the previous image's r2 runtime directory.
+bundles r4 only; it does not copy previous images' runtime directories.
+The r4 candidate adds selected-target brand identity. An old running runtime
+requires explicit stop/start. On non-Linux hosts the recorded PID, startedAt
+and runtime revision must match; new starts record their revision automatically.
 
 New users still need to authorize the provider CLIs through their official
 login flows. This integration does not migrate or create provider credentials.

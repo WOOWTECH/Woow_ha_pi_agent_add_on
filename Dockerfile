@@ -251,10 +251,10 @@ RUN curl --fail --silent --show-error --location --retry 3 "$(< /tmp/pins/omnige
 # The HA bridge consumes the plugin API; never apply its Pi Web 0.10 overlay.
 # Build the daemon + fixed Expo client once for each native image architecture.
 FROM piweb-builder AS paseo-builder
-ARG PI_PASEO_VERSION=0.1.17
-ARG PI_PASEO_SHA256=ef08edfa18cd3f71d8e50cc22329ee7c143632e04338f16c7188ae848f5c8170
+ARG PI_PASEO_VERSION=0.1.18
+ARG PI_PASEO_SHA256=18866e16ebf384e1c677c3654f7cfcde1010ef5e82f9d68f4e8dc115d0c602c0
 # Unpublished reviewable candidate: use the exact checked archive in this branch.
-COPY candidate-packages/woowtech-pi-paseo-0.1.17.tgz /tmp/paseo.tgz
+COPY candidate-packages/woowtech-pi-paseo-0.1.18.tgz /tmp/paseo.tgz
 RUN echo "${PI_PASEO_SHA256}  /tmp/paseo.tgz" | sha256sum --check --strict \
     && mkdir -p /opt/woow/pi-paseo-plugin \
     && tar -xzf /tmp/paseo.tgz --strip-components=1 -C /opt/woow/pi-paseo-plugin \

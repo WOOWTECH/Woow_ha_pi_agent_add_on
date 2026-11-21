@@ -224,8 +224,8 @@ jobs:
         npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/ha-browser" playwright@1.62.1
         node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
         node patches/patch-omnigent-settings.mjs "$RUNNER_TEMP/pi-web-native/package"
-        cp candidate-packages/woowtech-pi-paseo-0.1.17.tgz "$RUNNER_TEMP/paseo.tgz"
-        echo "ef08edfa18cd3f71d8e50cc22329ee7c143632e04338f16c7188ae848f5c8170  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
+        cp candidate-packages/woowtech-pi-paseo-0.1.18.tgz "$RUNNER_TEMP/paseo.tgz"
+        echo "18866e16ebf384e1c677c3654f7cfcde1010ef5e82f9d68f4e8dc115d0c602c0  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
         mkdir -p "$RUNNER_TEMP/pi-paseo"
         tar -xzf "$RUNNER_TEMP/paseo.tgz" --strip-components=1 -C "$RUNNER_TEMP/pi-paseo"
         export PASEO_PLUGIN_ROOT="$RUNNER_TEMP/pi-paseo"
