@@ -198,15 +198,23 @@ jobs:
       run: |
         npm install --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/pi-web-native/package" \
           @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0
-    # The released plugin from cli-runtime/versions.json, driven by the add-on's
+    - name: Verify shared runtime migration against the image SDK
+      run: |
+        echo "0914069fb0cf83f258cf81034bb16573f6e4242e8779cea47b4a5e841f98a937  candidate-packages/woowtech-pi-agent-shared-runtime-0.1.6.tgz" | sha256sum --check --strict
+        mkdir -p "$RUNNER_TEMP/shared-runtime"
+        tar -xzf candidate-packages/woowtech-pi-agent-shared-runtime-0.1.6.tgz --strip-components=1 -C "$RUNNER_TEMP/shared-runtime"
+        npm ci --prefix "$RUNNER_TEMP/shared-runtime" --omit=dev --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+        SHARED_RUNTIME_TEST_BUNDLE="$RUNNER_TEMP/shared-runtime" PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test tests/shared-distribution.test.mjs tests/shared-sync-only.test.mjs
+        PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test "$RUNNER_TEMP/shared-runtime/tests/resource-authority.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/resource-boundary.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/extension-scan.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/bridge.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/mcp-adapter.test.mjs"
+    # The exact vendored plugin from cli-runtime/versions.json, driven by the add-on's
     # seed, lifecycle and Settings bridge in seconds, before any image build:
     # fresh install, same-path upgrade and a plugin source switch.
-    - name: Version pins and released Omnigent plugin contract
+    - name: Version pins and frozen Omnigent plugin contract
       run: |
         node --test tests/versions.test.mjs
-        url="$(jq -er '.omnigentPlugin.url' cli-runtime/versions.json)"
+        archive="$(jq -er '.omnigentPlugin.archive' cli-runtime/versions.json)"
         sha256="$(jq -er '.omnigentPlugin.sha256' cli-runtime/versions.json)"
-        curl -fLsS --retry 3 "$url" -o "$RUNNER_TEMP/omnigent-plugin.tgz"
+        cp "$archive" "$RUNNER_TEMP/omnigent-plugin.tgz"
         echo "$sha256  $RUNNER_TEMP/omnigent-plugin.tgz" | sha256sum --check --strict
         OMNIGENT_PLUGIN_TGZ="$RUNNER_TEMP/omnigent-plugin.tgz" PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" \
           node --test tests/omnigent-contract.test.mjs
@@ -216,8 +224,8 @@ jobs:
         npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/ha-browser" playwright@1.62.1
         node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
         node patches/patch-omnigent-settings.mjs "$RUNNER_TEMP/pi-web-native/package"
-        curl -fLsS --retry 3 https://github.com/WOOWTECH/pi-paseo-plugin/releases/download/v0.1.15/woowtech-pi-paseo-0.1.15.tgz -o "$RUNNER_TEMP/paseo.tgz"
-        echo "1a8fd99a503d544a6bd324b93d080ed46dd0bb94cefbff863580580d9c72d4f5  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
+        cp candidate-packages/woowtech-pi-paseo-0.1.20.tgz "$RUNNER_TEMP/paseo.tgz"
+        echo "1574c1bd1d0023c7b536c9feb773e1cdded929104d79cfb05b1deda5846203f8  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
         mkdir -p "$RUNNER_TEMP/pi-paseo"
         tar -xzf "$RUNNER_TEMP/paseo.tgz" --strip-components=1 -C "$RUNNER_TEMP/pi-paseo"
         export PASEO_PLUGIN_ROOT="$RUNNER_TEMP/pi-paseo"
@@ -234,7 +242,7 @@ jobs:
     - name: Ingress shim and ChatGPT OAuth patch tests
       run: |
         node --test patches/tests/chatgpt-device-id.test.mjs
-        node --test tests/omnigent-ha.test.mjs tests/paseo-ha.test.mjs
+        node --test tests/omnigent-ha.test.mjs tests/paseo-ha.test.mjs tests/paseo-settings-ui.test.mjs
         for file in rootfs/usr/local/lib/pi-omnigent-ha/*.mjs rootfs/usr/local/share/pi-omnigent-ha/*.js rootfs/usr/local/lib/pi-paseo-ha/*.mjs rootfs/usr/local/share/pi-paseo-ha/*.js; do node --check "$file"; done
         node tests/shared-agent-state.mjs
         node tests/cli-wrappers.mjs
@@ -266,4 +274,4 @@ jobs:
       push:
         description: Push image to GHCR (false = build-only sanity check)
         type: boolean
-        default: true
+        default: false
