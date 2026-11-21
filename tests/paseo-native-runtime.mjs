@@ -14,7 +14,7 @@ export async function verifyNativeRuntime({ bundle, runtimeDir }) {
   const pkg = JSON.parse(fs.readFileSync(path.join(bundle, 'package.json')));
   assert.equal(pkg.name, '@woowtech/pi-paseo');
   assert.equal(pkg.version, '0.1.17');
-  assert.equal(layout.RUNTIME_REVISION, '0.11.2-r3-6d8dbe515479');
+  assert.equal(layout.RUNTIME_REVISION, '0.11.2-r3-4cf9d40940bf');
   assert.equal(layout.runtimeReady({ runtimeDir }), true);
   const root = layout.runtimeDirectory({ runtimeDir });
   assert.equal(patch.pidLockPatchReady(root), true, 'both native copies and transition helpers must match');
