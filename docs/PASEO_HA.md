@@ -18,7 +18,7 @@ Saving a target does not interrupt a running conversation: stop and start the
 service when convenient to apply the new target, then generate a fresh link.
 
 This source candidate pins the locally packed, unpublished Agent Connect
-0.1.18 archive. Its exact checksum is recorded below and in
+0.1.19 archive. Its exact checksum is recorded below and in
 `AGENT_CONNECT_CANDIDATE.md`. Builds that fetch the public URL must wait for
 that exact artifact to be published. The selector remains disabled with an
 upgrade message when a user-selected older plugin lacks target support.
@@ -27,8 +27,8 @@ publication. Existing paths and package identity remain compatible.
 
 ## Immutable image inputs
 
-- Agent Connect plugin 0.1.18, unpublished local candidate archive
-  SHA256 `18866e16ebf384e1c677c3654f7cfcde1010ef5e82f9d68f4e8dc115d0c602c0`.
+- Agent Connect plugin 0.1.19, unpublished local candidate archive
+  SHA256 `c3e78092b3782c9fbd67858820054690cb08d6e57ff380507b1d65aa19f93bbe`.
 - Paseo daemon 0.11.2, locked runtime revision `0.11.2-r4-4cf9d40940bf`.
 - Fixed web client 0.13.0-woow.1, source
   `68388f19198f1f696efe18906df42049e208d135`, stream repair

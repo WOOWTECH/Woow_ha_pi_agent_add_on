@@ -10,7 +10,7 @@ coordinated consumer updates and the normal release gates.
 | Input | Candidate version | SHA-256 |
 | --- | --- | --- |
 | `@woowtech/pi-agent-shared-runtime` | 0.1.5 | `f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea` |
-| `@woowtech/pi-paseo` (Agent Connect) | 0.1.18 | `18866e16ebf384e1c677c3654f7cfcde1010ef5e82f9d68f4e8dc115d0c602c0` |
+| `@woowtech/pi-paseo` (Agent Connect) | 0.1.19 | `c3e78092b3782c9fbd67858820054690cb08d6e57ff380507b1d65aa19f93bbe` |
 
 HA retains official Pi Web 0.12.0 with its independent Ingress bridge. Its
 existing Omnigent plugin 0.3.31 pin is unchanged because it does not consume
@@ -84,9 +84,12 @@ does not substitute for signed-installer or interactive provider acceptance.
 Darwin stale daemon recovery remains conservative; this patch does not claim
 Linux PID-birth recovery on macOS. Windows uses the supported WSL2 Linux path.
 
-Agent Connect source `dbab27cadfe1517bbd0ee3df15b582ae9096ca03`, runtime
+Agent Connect source `516ab49634f1ad4312d64fbcce57ff9ff1af4caa`, runtime
 `0.11.2-r4-4cf9d40940bf`. This candidate adds selected-target brand identity.
 An older running runtime requires explicit stop/start; non-Linux recognition
 requires matching PID, startedAt and runtime revision in the persisted record.
-Full Mac first-stop acceptance is still blocked on the separate supervisor
-shutdown deadline; publication and real-host acceptance remain pending.
+Version 0.1.19 extends the supervisor stop budget to 30 seconds around the
+20-second nested daemon stop, including replacement shutdown. Full native Mac
+first-stop, restart and identity gates must pass on this exact archive; prior
+0.1.18 failures remain historical evidence. Publication and real-host provider
+acceptance remain pending.
