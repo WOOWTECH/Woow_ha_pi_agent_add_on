@@ -68,7 +68,8 @@ all without skips. These upstream results do not replace consumer installation C
 
 Native CI and both offline HA final-image builds require resource authority,
 resource boundary, extension scan, bridge and MCP adapter tests from the installed
-016 bundle (22 tests), with the actual platform SDK. Native's canonical release
+016 bundle (21 named tests; the MCP test runs both cold and warm processes),
+with the actual platform SDK. Native's canonical release
 artifact workflow requires the same group before packaging. Replacement-archive
 full Mac and HA image CI must pass on this draft head; previous Shared015 green
 runs are preserved as historical evidence only.
