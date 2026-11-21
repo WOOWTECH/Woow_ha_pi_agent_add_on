@@ -274,4 +274,4 @@ jobs:
       push:
         description: Push image to GHCR (false = build-only sanity check)
         type: boolean
-        default: true
+        default: false

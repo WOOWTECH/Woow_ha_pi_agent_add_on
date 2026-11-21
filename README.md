@@ -264,6 +264,20 @@ Multi-arch images built by [`.github/workflows/build.yml`](.github/workflows/bui
 
 Base: `ghcr.io/hassio-addons/debian-base:9.1.0`.
 
+The 0.15.22 source candidate contains the exact checksum-pinned archives in
+`candidate-packages/manifest.json`: `@woowtech/pi-paseo` 0.1.20,
+`@woowtech/pi-omnigent-plugin` 0.3.34 and
+`@woowtech/pi-agent-shared-runtime` 0.1.6. Both image architectures and the
+Store local-source build consume these files directly. No npm publication or
+plugin GitHub Release is needed to build this source candidate.
+
+Release preparation stays in a draft PR until the exact artifacts are reviewed.
+Merging a version change to `main` starts image publication and the Store release
+pipeline; it is a publication action. A manual build defaults to `push: false`.
+The published 0.15.21 image is immutable and must not be overwritten with this
+candidate. Successful image/mock-Supervisor CI is not a real HAOS upgrade or
+user provider acceptance.
+
 **The Dockerfile is multi-stage as of v0.14.0.** pi-web 0.9.0's terminal pulls in `node-pty`, a native addon with no linux prebuild, so `node-gyp rebuild` runs during the build. A compiler is therefore needed to *build* the add-on but not to *run* it — and the agent's bash tool executes model-authored commands inside this container — so `build-essential` lives in a throwaway builder stage and only the finished tree is copied into the shipped image. The builder uses the same `${BUILD_FROM}` base as the runtime stage, not a plain Debian image: the add-on builds for amd64 and aarch64, and a native module compiled against a different glibc or Node ABI than the one that loads it yields a terminal that attaches and never prompts. A cross-stage `require()` assertion turns that into a failed build.
 
 ## Security
