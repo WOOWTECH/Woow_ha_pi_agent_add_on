@@ -265,9 +265,9 @@ RUN echo "${PI_PASEO_SHA256}  /tmp/paseo.tgz" | sha256sum --check --strict \
 # Shared runtime is the same verified candidate used by native and k3s.
 # Disable npm lifecycle scripts: seed under the persistent provider HOME at boot.
 FROM piweb-builder AS shared-runtime-builder
-ARG PI_SHARED_RUNTIME_VERSION=0.1.5
-ARG PI_SHARED_RUNTIME_SHA256=f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea
-COPY candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz /tmp/shared-runtime.tgz
+ARG PI_SHARED_RUNTIME_VERSION=0.1.6
+ARG PI_SHARED_RUNTIME_SHA256=0914069fb0cf83f258cf81034bb16573f6e4242e8779cea47b4a5e841f98a937
+COPY candidate-packages/woowtech-pi-agent-shared-runtime-0.1.6.tgz /tmp/shared-runtime.tgz
 RUN echo "${PI_SHARED_RUNTIME_SHA256}  /tmp/shared-runtime.tgz" | sha256sum --check --strict \
     && mkdir -p /opt/woow/pi-agent-shared-runtime \
     && tar -xzf /tmp/shared-runtime.tgz --strip-components=1 -C /opt/woow/pi-agent-shared-runtime \
@@ -442,6 +442,7 @@ RUN chmod +x \
     && tmux -V
 
 # CI has no HA bridge address; check a copy with a loopback listener.
+# The installed shared suite includes cold/warm metadata-cache MCP startup.
 RUN --network=none sed 's/listen 172.30.32.1:30142/listen 127.0.0.1:30142/' /etc/nginx/nginx.conf > /tmp/nginx-ci.conf \
     && nginx -t -c /tmp/nginx-ci.conf \
     && rm /tmp/nginx-ci.conf \

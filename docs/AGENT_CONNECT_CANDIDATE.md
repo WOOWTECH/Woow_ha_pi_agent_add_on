@@ -9,7 +9,7 @@ coordinated consumer updates and the normal release gates.
 
 | Input | Candidate version | SHA-256 |
 | --- | --- | --- |
-| `@woowtech/pi-agent-shared-runtime` | 0.1.5 | `f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea` |
+| `@woowtech/pi-agent-shared-runtime` | 0.1.6 | `0914069fb0cf83f258cf81034bb16573f6e4242e8779cea47b4a5e841f98a937` |
 | `@woowtech/pi-paseo` (Agent Connect) | 0.1.20 | `1574c1bd1d0023c7b536c9feb773e1cdded929104d79cfb05b1deda5846203f8` |
 
 | `@woowtech/pi-omnigent-plugin` | 0.3.34 | `e9e80783881f8a036cbf922d2f50fad860dac3bd23e170dda768ab3c56107945` |
@@ -47,10 +47,10 @@ are imported automatically.
 
 ## Extension-free resource scans and current validation
 
-Shared source `8009ba9c77148b8d329d3660cca31c4da91e435c` is frozen as the
-`f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea` archive
+Shared source `e51849dfa340a2f91bcc7041092749d1b4859c70` is frozen as the
+`0914069fb0cf83f258cf81034bb16573f6e4242e8779cea47b4a5e841f98a937` archive
 listed above. Consumers copy these exact bytes without repacking. The source
-receipt reports 61/61 tests and audit zero; its previous archive's image and SDK
+receipt reports 61/61 full SDK1.4 tests; its previous archive's image and SDK
 results do not establish acceptance of this replacement.
 
 `loadResources` resolves authoritative skills without importing package, global
@@ -59,18 +59,19 @@ Resource scans and `run-cli` leave normal provider children with their original
 extension flags. Distribution helpers additionally scope bridge mode to the
 short-lived helper, preserving the actual Pi CLI environment and credentials.
 
-Fresh local frozen-archive checks pass 21/21 on native SDK1.0 and HA SDK1.1:
-resource authority/boundary (9), extension scans/boot/watcher/provider child
-control (10), bridge isolation (1), and a real stdio MCP call (1). Shipped native
-helper/wrapper tests pass 18/18; HA helpers pass 4/4. These are SDK fixture and
-resource tests, not authenticated provider/model conversations.
+Shared 0.1.6 additionally initializes the SDK theme before headless MCP extension
+binding. Its installed `tests/mcp-adapter.test.mjs` starts a real cold bridge,
+discovers and calls a stdio tool, retains the metadata cache, then starts a
+second warm bridge and requires empty `runtimeErrors` plus another tool call.
+The frozen source receipt reports SDK1.4 full61/61 and SDK1.0/1.1/1.6 focused12/12,
+all without skips. These upstream results do not replace consumer installation CI.
 
-Native CI requires this 21-case suite using its pinned Pi Web dependency graph.
-HA CI requires the same suite on its production SDK1.1 graph; both amd64 and
-aarch64 final-image builds also run it with networking disabled, alongside the
-shipped-helper tests. Replacement-archive CI results must be checked on the
-current draft head; earlier green runs for `55564c5`/`ff08ddf` used the old shared
-archive and are historical evidence only.
+Native CI and both offline HA final-image builds require resource authority,
+resource boundary, extension scan, bridge and MCP adapter tests from the installed
+016 bundle (22 tests), with the actual platform SDK. Native's canonical release
+artifact workflow requires the same group before packaging. Replacement-archive
+full Mac and HA image CI must pass on this draft head; previous Shared015 green
+runs are preserved as historical evidence only.
 
 Actual macOS, Ubuntu, Windows/WSL2 and HA Supervisor/provider acceptance remain
 pending. HA addon version is unchanged: a successful no-version-change upgrade

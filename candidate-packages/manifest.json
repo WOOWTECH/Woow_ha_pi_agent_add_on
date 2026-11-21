@@ -2,10 +2,10 @@
   "schema": 1,
   "artifacts": [
     {
-      "file": "woowtech-pi-agent-shared-runtime-0.1.5.tgz",
-      "sha256": "f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea",
+      "file": "woowtech-pi-agent-shared-runtime-0.1.6.tgz",
+      "sha256": "0914069fb0cf83f258cf81034bb16573f6e4242e8779cea47b4a5e841f98a937",
       "status": "unpublished candidate; not a registry/release asset",
-      "sourceCommit": "8009ba9c77148b8d329d3660cca31c4da91e435c"
+      "sourceCommit": "e51849dfa340a2f91bcc7041092749d1b4859c70"
     },
     {
       "file": "woowtech-pi-paseo-0.1.20.tgz",
