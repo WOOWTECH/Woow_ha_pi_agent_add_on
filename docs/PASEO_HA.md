@@ -18,7 +18,7 @@ Saving a target does not interrupt a running conversation: stop and start the
 service when convenient to apply the new target, then generate a fresh link.
 
 This source candidate pins the locally packed, unpublished Agent Connect
-0.1.19 archive. Its exact checksum is recorded below and in
+0.1.20 archive. Its exact checksum is recorded below and in
 `AGENT_CONNECT_CANDIDATE.md`. Builds that fetch the public URL must wait for
 that exact artifact to be published. The selector remains disabled with an
 upgrade message when a user-selected older plugin lacks target support.
@@ -27,15 +27,15 @@ publication. Existing paths and package identity remain compatible.
 
 ## Immutable image inputs
 
-- Agent Connect plugin 0.1.19, unpublished local candidate archive
-  SHA256 `c3e78092b3782c9fbd67858820054690cb08d6e57ff380507b1d65aa19f93bbe`.
+- Agent Connect plugin 0.1.20, unpublished local candidate archive
+  SHA256 `1574c1bd1d0023c7b536c9feb773e1cdded929104d79cfb05b1deda5846203f8`.
 - Paseo daemon 0.11.2, locked runtime revision `0.11.2-r4-4cf9d40940bf`.
 - Fixed web client 0.13.0-woow.1, source
   `68388f19198f1f696efe18906df42049e208d135`, stream repair
   `043aa8286b90418eb1f4e9982ca1a349c84f2a3d`, archive SHA256
   `7e7495f70f721e96e121f76bd91573150cf91aa112143d9f4d51a3fcf9dc8bce`.
-- Omnigent 0.3.31, source `a5671f00b280e14c3a376d84bfa4ec65f9aeefd9`, public archive SHA256
-  `b62059cdb6e5035c577e0e759d01a2586f1353768b40da2d190ec2db6f3bb4e7`.
+- Omnigent 0.3.34, source `d8652e971bdf66133d699052ab9003d39ff69159`, unpublished vendored archive SHA256
+  `e9e80783881f8a036cbf922d2f50fad860dac3bd23e170dda768ab3c56107945`.
   HA 0.15.19 keeps authorized-host recovery and native Pi Web 0.12 settings;
   Omnigent setup runs only from Settings. There is no floating link, setup
   conversation or link to one (0.15.14, which had them, is withdrawn).

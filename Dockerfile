@@ -5,7 +5,7 @@ ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:9.1.0
 # =============================================================================
 #
 # cli-runtime/versions.json is the single source of the bundled Omnigent plugin
-# (release URL and sha256), Omnigent CLI, Claude Code and Codex versions. CI and
+# (vendored archive and sha256), Omnigent CLI, Claude Code and Codex versions. CI and
 # the tests read the same file. Each stage below copies only the pins it uses:
 # BuildKit keys COPY --from on file content, so a bump re-runs only the stage
 # that consumes the changed pin. The other components keep their cached layers,
@@ -20,7 +20,7 @@ RUN set -euo pipefail; \
     pin codex/version .codex.version "${semver}"; \
     pin omnigent/version .omnigent.version "${semver}"; \
     pin omnigent-plugin/version .omnigentPlugin.version "${semver}"; \
-    pin omnigent-plugin/url .omnigentPlugin.url '^https://github[.]com/WOOWTECH/pi-omnigent-plugin/releases/download/'; \
+    pin omnigent-plugin/archive .omnigentPlugin.archive '^candidate-packages/woowtech-pi-omnigent-plugin-[0-9]+[.][0-9]+[.][0-9]+[.]tgz$'; \
     pin omnigent-plugin/sha256 .omnigentPlugin.sha256 '^[0-9a-f]{64}$'
 
 # =============================================================================
@@ -240,7 +240,8 @@ RUN SITE_PACKAGES="$(/opt/omnigent/venv/bin/python -c 'import sysconfig; print(s
     && /opt/omnigent/venv/bin/python /opt/patches/tests/omnigent-model-options-patch.test.py \
     && grep -q '_ambient_pi_model_options' "${SITE_PACKAGES}/omnigent/harnesses/pi_native/credentials.py"
 COPY --from=pins /pins/omnigent-plugin/ /tmp/pins/omnigent-plugin/
-RUN curl --fail --silent --show-error --location --retry 3 "$(< /tmp/pins/omnigent-plugin/url)" -o /tmp/plugin.tgz \
+COPY candidate-packages/ /tmp/candidate-packages/
+RUN cp "/tmp/$(< /tmp/pins/omnigent-plugin/archive)" /tmp/plugin.tgz \
     && echo "$(< /tmp/pins/omnigent-plugin/sha256)  /tmp/plugin.tgz" | sha256sum --check --strict \
     && mkdir -p /opt/woow/pi-omnigent-plugin \
     && tar -xzf /tmp/plugin.tgz --strip-components=1 -C /opt/woow/pi-omnigent-plugin \
@@ -251,10 +252,10 @@ RUN curl --fail --silent --show-error --location --retry 3 "$(< /tmp/pins/omnige
 # The HA bridge consumes the plugin API; never apply its Pi Web 0.10 overlay.
 # Build the daemon + fixed Expo client once for each native image architecture.
 FROM piweb-builder AS paseo-builder
-ARG PI_PASEO_VERSION=0.1.19
-ARG PI_PASEO_SHA256=c3e78092b3782c9fbd67858820054690cb08d6e57ff380507b1d65aa19f93bbe
+ARG PI_PASEO_VERSION=0.1.20
+ARG PI_PASEO_SHA256=1574c1bd1d0023c7b536c9feb773e1cdded929104d79cfb05b1deda5846203f8
 # Unpublished reviewable candidate: use the exact checked archive in this branch.
-COPY candidate-packages/woowtech-pi-paseo-0.1.19.tgz /tmp/paseo.tgz
+COPY candidate-packages/woowtech-pi-paseo-0.1.20.tgz /tmp/paseo.tgz
 RUN echo "${PI_PASEO_SHA256}  /tmp/paseo.tgz" | sha256sum --check --strict \
     && mkdir -p /opt/woow/pi-paseo-plugin \
     && tar -xzf /tmp/paseo.tgz --strip-components=1 -C /opt/woow/pi-paseo-plugin \

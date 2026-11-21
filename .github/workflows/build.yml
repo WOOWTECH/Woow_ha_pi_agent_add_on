@@ -206,15 +206,15 @@ jobs:
         npm ci --prefix "$RUNNER_TEMP/shared-runtime" --omit=dev --legacy-peer-deps --ignore-scripts --no-audit --no-fund
         SHARED_RUNTIME_TEST_BUNDLE="$RUNNER_TEMP/shared-runtime" PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test tests/shared-distribution.test.mjs tests/shared-sync-only.test.mjs
         PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test "$RUNNER_TEMP/shared-runtime/tests/resource-authority.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/resource-boundary.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/extension-scan.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/bridge.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/mcp-adapter.test.mjs"
-    # The released plugin from cli-runtime/versions.json, driven by the add-on's
+    # The exact vendored plugin from cli-runtime/versions.json, driven by the add-on's
     # seed, lifecycle and Settings bridge in seconds, before any image build:
     # fresh install, same-path upgrade and a plugin source switch.
-    - name: Version pins and released Omnigent plugin contract
+    - name: Version pins and frozen Omnigent plugin contract
       run: |
         node --test tests/versions.test.mjs
-        url="$(jq -er '.omnigentPlugin.url' cli-runtime/versions.json)"
+        archive="$(jq -er '.omnigentPlugin.archive' cli-runtime/versions.json)"
         sha256="$(jq -er '.omnigentPlugin.sha256' cli-runtime/versions.json)"
-        curl -fLsS --retry 3 "$url" -o "$RUNNER_TEMP/omnigent-plugin.tgz"
+        cp "$archive" "$RUNNER_TEMP/omnigent-plugin.tgz"
         echo "$sha256  $RUNNER_TEMP/omnigent-plugin.tgz" | sha256sum --check --strict
         OMNIGENT_PLUGIN_TGZ="$RUNNER_TEMP/omnigent-plugin.tgz" PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" \
           node --test tests/omnigent-contract.test.mjs
@@ -224,8 +224,8 @@ jobs:
         npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/ha-browser" playwright@1.62.1
         node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
         node patches/patch-omnigent-settings.mjs "$RUNNER_TEMP/pi-web-native/package"
-        cp candidate-packages/woowtech-pi-paseo-0.1.19.tgz "$RUNNER_TEMP/paseo.tgz"
-        echo "c3e78092b3782c9fbd67858820054690cb08d6e57ff380507b1d65aa19f93bbe  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
+        cp candidate-packages/woowtech-pi-paseo-0.1.20.tgz "$RUNNER_TEMP/paseo.tgz"
+        echo "1574c1bd1d0023c7b536c9feb773e1cdded929104d79cfb05b1deda5846203f8  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
         mkdir -p "$RUNNER_TEMP/pi-paseo"
         tar -xzf "$RUNNER_TEMP/paseo.tgz" --strip-components=1 -C "$RUNNER_TEMP/pi-paseo"
         export PASEO_PLUGIN_ROOT="$RUNNER_TEMP/pi-paseo"

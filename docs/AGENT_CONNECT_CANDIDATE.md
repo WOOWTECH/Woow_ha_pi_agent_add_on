@@ -10,11 +10,13 @@ coordinated consumer updates and the normal release gates.
 | Input | Candidate version | SHA-256 |
 | --- | --- | --- |
 | `@woowtech/pi-agent-shared-runtime` | 0.1.5 | `f59b204a681f147b843199ffec9845723176916dee979ee78c4cf82b7dd1f3ea` |
-| `@woowtech/pi-paseo` (Agent Connect) | 0.1.19 | `c3e78092b3782c9fbd67858820054690cb08d6e57ff380507b1d65aa19f93bbe` |
+| `@woowtech/pi-paseo` (Agent Connect) | 0.1.20 | `1574c1bd1d0023c7b536c9feb773e1cdded929104d79cfb05b1deda5846203f8` |
+
+| `@woowtech/pi-omnigent-plugin` | 0.3.34 | `e9e80783881f8a036cbf922d2f50fad860dac3bd23e170dda768ab3c56107945` |
 
 HA retains official Pi Web 0.12.0 with its independent Ingress bridge. Its
-existing Omnigent plugin 0.3.31 pin is unchanged because it does not consume
-the 0.10 combined adapter. The Agent Connect GUI supports older user-selected
+Omnigent plugin is now the same frozen0.3.34 archive as native. HA does not
+apply its 0.10 combined adapter; the official0.12 bridge remains in use. The Agent Connect GUI supports older user-selected
 Paseo plugins by disabling the new selector while retaining Paseo pairing.
 
 Agent Connect preserves package IDs and paths. Existing installations default
@@ -84,12 +86,14 @@ does not substitute for signed-installer or interactive provider acceptance.
 Darwin stale daemon recovery remains conservative; this patch does not claim
 Linux PID-birth recovery on macOS. Windows uses the supported WSL2 Linux path.
 
-Agent Connect source `516ab49634f1ad4312d64fbcce57ff9ff1af4caa`, runtime
+Agent Connect source `aea2da4a83dbd220d8e9aa532ff91f9ac4e2c206`, runtime
 `0.11.2-r4-4cf9d40940bf`. This candidate adds selected-target brand identity.
 An older running runtime requires explicit stop/start; non-Linux recognition
 requires matching PID, startedAt and runtime revision in the persisted record.
-Version 0.1.19 extends the supervisor stop budget to 30 seconds around the
+Version 0.1.20 retains the 0.1.19 fix, extending the supervisor stop budget to 30 seconds around the
 20-second nested daemon stop, including replacement shutdown. Full native Mac
 first-stop, restart and identity gates must pass on this exact archive; prior
 0.1.18 failures remain historical evidence. Publication and real-host provider
 acceptance remain pending.
+
+Joint freeze: Omnigent0.3.34 source `d8652e971bdf66133d699052ab9003d39ff69159` and Paseo0.1.20 source `aea2da4a83dbd220d8e9aa532ff91f9ac4e2c206`. The combined PiWeb metadata pins both versions exactly and its VM fixtures include the lifecycle-timeouts dependency. Full consumer results must be checked on this joint candidate.

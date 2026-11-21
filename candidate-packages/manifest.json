@@ -8,11 +8,17 @@
       "sourceCommit": "8009ba9c77148b8d329d3660cca31c4da91e435c"
     },
     {
-      "file": "woowtech-pi-paseo-0.1.19.tgz",
-      "sha256": "c3e78092b3782c9fbd67858820054690cb08d6e57ff380507b1d65aa19f93bbe",
+      "file": "woowtech-pi-paseo-0.1.20.tgz",
+      "sha256": "1574c1bd1d0023c7b536c9feb773e1cdded929104d79cfb05b1deda5846203f8",
       "status": "unpublished candidate; not a registry/release asset",
-      "sourceCommit": "516ab49634f1ad4312d64fbcce57ff9ff1af4caa",
+      "sourceCommit": "aea2da4a83dbd220d8e9aa532ff91f9ac4e2c206",
       "runtimeRevision": "0.11.2-r4-4cf9d40940bf"
+    },
+    {
+      "file": "woowtech-pi-omnigent-plugin-0.3.34.tgz",
+      "sha256": "e9e80783881f8a036cbf922d2f50fad860dac3bd23e170dda768ab3c56107945",
+      "status": "unpublished candidate; not a registry/release asset",
+      "sourceCommit": "d8652e971bdf66133d699052ab9003d39ff69159"
     }
   ]
 }
