@@ -251,15 +251,30 @@ RUN curl --fail --silent --show-error --location --retry 3 "$(< /tmp/pins/omnige
 # The HA bridge consumes the plugin API; never apply its Pi Web 0.10 overlay.
 # Build the daemon + fixed Expo client once for each native image architecture.
 FROM piweb-builder AS paseo-builder
-ARG PI_PASEO_VERSION=0.1.15
-ARG PI_PASEO_SHA256=1a8fd99a503d544a6bd324b93d080ed46dd0bb94cefbff863580580d9c72d4f5
-RUN curl --fail --silent --show-error --location --retry 3 \
-      "https://github.com/WOOWTECH/pi-paseo-plugin/releases/download/v${PI_PASEO_VERSION}/woowtech-pi-paseo-${PI_PASEO_VERSION}.tgz" -o /tmp/paseo.tgz \
-    && echo "${PI_PASEO_SHA256}  /tmp/paseo.tgz" | sha256sum --check --strict \
+ARG PI_PASEO_VERSION=0.1.17
+ARG PI_PASEO_SHA256=1d4f0e9dc08ee73f9935dbff054f2854f77c2b80aedc7f81c3cc527481885fd8
+# Unpublished reviewable candidate: use the exact checked archive in this branch.
+COPY candidate-packages/woowtech-pi-paseo-0.1.17.tgz /tmp/paseo.tgz
+RUN echo "${PI_PASEO_SHA256}  /tmp/paseo.tgz" | sha256sum --check --strict \
     && mkdir -p /opt/woow/pi-paseo-plugin \
     && tar -xzf /tmp/paseo.tgz --strip-components=1 -C /opt/woow/pi-paseo-plugin \
     && node /opt/patches/build-paseo.mjs \
     && rm -rf /tmp/paseo.tgz /tmp/npm-cache
+
+# Shared runtime is the same verified candidate used by native and k3s.
+# Disable npm lifecycle scripts: seed under the persistent provider HOME at boot.
+FROM piweb-builder AS shared-runtime-builder
+ARG PI_SHARED_RUNTIME_VERSION=0.1.5
+ARG PI_SHARED_RUNTIME_SHA256=68ba472e3292341911e2041e3e4c19f46ea38aaca13b96728ac874cbb6e97240
+COPY candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz /tmp/shared-runtime.tgz
+RUN echo "${PI_SHARED_RUNTIME_SHA256}  /tmp/shared-runtime.tgz" | sha256sum --check --strict \
+    && mkdir -p /opt/woow/pi-agent-shared-runtime \
+    && tar -xzf /tmp/shared-runtime.tgz --strip-components=1 -C /opt/woow/pi-agent-shared-runtime \
+    && node -e 'const p=require(process.argv[1]); if(p.name!=="@woowtech/pi-agent-shared-runtime"||p.version!==process.argv[2]) throw Error("unexpected shared runtime")' /opt/woow/pi-agent-shared-runtime/package.json "${PI_SHARED_RUNTIME_VERSION}" \
+    && npm ci --prefix /opt/woow/pi-agent-shared-runtime --omit=dev --legacy-peer-deps --ignore-scripts --no-audit --no-fund \
+    && test -f /opt/woow/pi-agent-shared-runtime/src/distribution.mjs \
+    && chmod -R a+rX,go-w /opt/woow/pi-agent-shared-runtime \
+    && rm -rf /tmp/shared-runtime.tgz /tmp/npm-cache
 
 # =============================================================================
 # Stage 2 — the add-on image. No compiler.
@@ -344,6 +359,7 @@ COPY --from=omnigent-builder /opt/woow/pi-omnigent-plugin /opt/woow/pi-omnigent-
 COPY --from=paseo-builder /opt/woow/pi-paseo-plugin /opt/woow/pi-paseo-plugin
 COPY --from=paseo-builder /opt/woow/paseo-runtime /opt/woow/paseo-runtime
 COPY --from=paseo-builder /opt/woow/paseo-web /opt/woow/paseo-web
+COPY --from=shared-runtime-builder /opt/woow/pi-agent-shared-runtime /opt/woow/pi-agent-shared-runtime
 RUN ln -s /usr/local/lib/node_modules/@agegr/pi-web/node_modules /opt/woow/pi-paseo-plugin/node_modules \
     && ln -s /opt/woow/pi-paseo-plugin/bin/cli.mjs /usr/local/bin/pi-paseo \
     && chmod +x /opt/woow/pi-paseo-plugin/bin/cli.mjs
@@ -389,6 +405,7 @@ COPY rootfs/ /
 COPY tests/omnigent-image-smoke.mjs /tmp/omnigent-image-smoke.mjs
 COPY tests/paseo-image-smoke.mjs /tmp/paseo-image-smoke.mjs
 COPY tests/paseo-native-runtime.mjs /tmp/paseo-native-runtime.mjs
+COPY tests/shared-distribution.test.mjs /tmp/shared-distribution.test.mjs
 
 # rootfs COPY doesn't reliably preserve +x on files created outside a POSIX
 # filesystem. Explicitly re-mark every executable we ship so s6-overlay's
@@ -428,7 +445,9 @@ RUN --network=none sed 's/listen 172.30.32.1:30142/listen 127.0.0.1:30142/' /etc
     && rm /tmp/nginx-ci.conf \
     && timeout 300s node /tmp/omnigent-image-smoke.mjs \
     && timeout 120s node /tmp/paseo-image-smoke.mjs \
-    && rm /tmp/omnigent-image-smoke.mjs /tmp/paseo-image-smoke.mjs /tmp/paseo-native-runtime.mjs
+    && SHARED_RUNTIME_TEST_BUNDLE=/opt/woow/pi-agent-shared-runtime SHARED_DISTRIBUTION_HELPER=/usr/local/bin/pi-agent-share-state.mjs \
+       timeout 120s node --test /tmp/shared-distribution.test.mjs \
+    && rm /tmp/omnigent-image-smoke.mjs /tmp/paseo-image-smoke.mjs /tmp/paseo-native-runtime.mjs /tmp/shared-distribution.test.mjs
 
 # SHELL is what pi-web 0.9.0's browser terminal spawns:
 #     process.env.SHELL || "/bin/sh"   with argv ["-l"]

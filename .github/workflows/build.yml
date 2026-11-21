@@ -198,6 +198,13 @@ jobs:
       run: |
         npm install --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/pi-web-native/package" \
           @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0
+    - name: Verify shared runtime migration against the image SDK
+      run: |
+        echo "68ba472e3292341911e2041e3e4c19f46ea38aaca13b96728ac874cbb6e97240  candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz" | sha256sum --check --strict
+        mkdir -p "$RUNNER_TEMP/shared-runtime"
+        tar -xzf candidate-packages/woowtech-pi-agent-shared-runtime-0.1.5.tgz --strip-components=1 -C "$RUNNER_TEMP/shared-runtime"
+        npm ci --prefix "$RUNNER_TEMP/shared-runtime" --omit=dev --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+        SHARED_RUNTIME_TEST_BUNDLE="$RUNNER_TEMP/shared-runtime" PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test tests/shared-distribution.test.mjs
     # The released plugin from cli-runtime/versions.json, driven by the add-on's
     # seed, lifecycle and Settings bridge in seconds, before any image build:
     # fresh install, same-path upgrade and a plugin source switch.
@@ -216,8 +223,8 @@ jobs:
         npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/ha-browser" playwright@1.62.1
         node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
         node patches/patch-omnigent-settings.mjs "$RUNNER_TEMP/pi-web-native/package"
-        curl -fLsS --retry 3 https://github.com/WOOWTECH/pi-paseo-plugin/releases/download/v0.1.15/woowtech-pi-paseo-0.1.15.tgz -o "$RUNNER_TEMP/paseo.tgz"
-        echo "1a8fd99a503d544a6bd324b93d080ed46dd0bb94cefbff863580580d9c72d4f5  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
+        cp candidate-packages/woowtech-pi-paseo-0.1.17.tgz "$RUNNER_TEMP/paseo.tgz"
+        echo "1d4f0e9dc08ee73f9935dbff054f2854f77c2b80aedc7f81c3cc527481885fd8  $RUNNER_TEMP/paseo.tgz" | sha256sum --check --strict
         mkdir -p "$RUNNER_TEMP/pi-paseo"
         tar -xzf "$RUNNER_TEMP/paseo.tgz" --strip-components=1 -C "$RUNNER_TEMP/pi-paseo"
         export PASEO_PLUGIN_ROOT="$RUNNER_TEMP/pi-paseo"
@@ -234,7 +241,7 @@ jobs:
     - name: Ingress shim and ChatGPT OAuth patch tests
       run: |
         node --test patches/tests/chatgpt-device-id.test.mjs
-        node --test tests/omnigent-ha.test.mjs tests/paseo-ha.test.mjs
+        node --test tests/omnigent-ha.test.mjs tests/paseo-ha.test.mjs tests/paseo-settings-ui.test.mjs
         for file in rootfs/usr/local/lib/pi-omnigent-ha/*.mjs rootfs/usr/local/share/pi-omnigent-ha/*.js rootfs/usr/local/lib/pi-paseo-ha/*.mjs rootfs/usr/local/share/pi-paseo-ha/*.js; do node --check "$file"; done
         node tests/shared-agent-state.mjs
         node tests/cli-wrappers.mjs
