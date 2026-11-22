@@ -188,6 +188,10 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: 22
+    - name: Native maintenance source and upgrade-hook fixtures
+      run: |
+        python3 -B tests/native-maintenance-integration.test.py
+        python3 -B tests/native-history-upgrade.test.py
     - name: Validate native settings against the official compiled Pi Web artifact
       run: |
         mkdir -p "$RUNNER_TEMP/pi-web-native"
