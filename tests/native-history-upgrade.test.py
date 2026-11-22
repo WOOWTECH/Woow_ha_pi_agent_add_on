@@ -43,6 +43,7 @@ class SyntheticUpgradeTests(unittest.TestCase):
         record = report / f"{hook}.json"
         if report_expected and "REPORT_DIR" not in extra:
             self.assertTrue(record.is_file(), result.stdout + result.stderr)
+            self.assertEqual(stat.S_IMODE(record.stat().st_mode), 0o644)
             parsed = json.loads(record.read_text())
             self.assertEqual(all(c["result"] == "pass" for c in parsed["checks"]), success)
             self.assertIs(parsed["scope"]["maintenanceExecuted"], False)

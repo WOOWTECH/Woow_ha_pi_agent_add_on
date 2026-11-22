@@ -299,7 +299,10 @@ def main(hook):
         # An invalid/overlapping scope must not redirect even a failure report
         # into fixture data or state. Ambiguous environments fail without it.
         with directory(scopes()["REPORT_DIR"]) as report:
-            write_new(report, hook + ".json", (json.dumps(record, sort_keys=True) + "\n").encode())
+            # Store's host reader has a different UID from the hook writer.
+            # This public summary has only fixed checks/counts and a synthetic
+            # manifest hash; private fixture state keeps write_new's 0600.
+            write_new(report, hook + ".json", (json.dumps(record, sort_keys=True) + "\n").encode(), mode=0o644)
     except (OSError, ValueError):
         print("native-fixture-v1:report_refused", file=sys.stderr)
         return 1
