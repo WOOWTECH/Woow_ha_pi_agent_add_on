@@ -26,8 +26,7 @@ export function exitCodeFor(code, signal, stopSignal) {
  *
  * - On SIGINT/SIGTERM/SIGHUP: forward the signal to the child and start cleanup
  *   at once (it runs in parallel with the child's own shutdown).
- * - If the child is still running `killAfterMs` after the signal, SIGKILL it
- *   (its process group too when `group` is set).
+ * - If the child is still running `killAfterMs` after the signal, SIGKILL it.
  * - Cleanup gets at most `cleanupTimeoutMs`; whatever it has not finished by
  *   then is abandoned.
  * - At most `deadlineMs` after the signal the process exits, whatever is left.
@@ -39,7 +38,6 @@ export function superviseChild(child, {
   killAfterMs = 4000,
   cleanupTimeoutMs = 5000,
   deadlineMs = 6000,
-  group = false,
   exit = code => process.exit(code),
   log = message => console.error(message),
   name = 'child',
@@ -48,10 +46,7 @@ export function superviseChild(child, {
   let stopSignal = null, cleaning = null, exited = false, finished = false;
   let childDone = false, childCode = 0;
   const timers = [];
-  const kill = signal => {
-    try { group ? proc.kill(-child.pid, signal) : child.kill(signal); }
-    catch { try { child.kill(signal); } catch {} }
-  };
+  const kill = signal => { try { child.kill(signal); } catch {} };
   const runCleanup = () => {
     cleaning ??= (async () => {
       let timer;
