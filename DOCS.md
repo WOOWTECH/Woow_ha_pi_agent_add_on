@@ -208,5 +208,6 @@ Logs from each retry show up in the addon Logs tab under the `video-tools-init` 
 2. 按 **產生連線連結** 後，只接受 `https://app.paseo.sh/#offer=<base64url>` 這個固定格式（Smart 選項則是各自官方網站的同格式連結）；其他網址、連接埠、路徑或查詢字串一律拒絕。
 3. 更新後請重新啟動 Add-on（Supervisor 套用更新時會自行重啟）。先前透過舊的 `/paseo-web` 配對過的瀏覽器，需要在 app.paseo.sh 重新配對一次：開啟設定頁、產生連結並開啟。主機身分、供應商登入、對話與設定不變；舊的 `/paseo-web` 分頁與書籤不再可用。
 4. 「允許代理彼此協作」開關（Agent Connect 0.1.22 起，預設關閉）不在此設定頁；本頁只儲存連線標的，不會變更它。
+5. 已知差異：先前內建的 Paseo 網頁帶有兩項顯示修補，上游尚未合併（getpaseo/paseo#7908）：回覆途中重新整理時回覆重複顯示，以及長回覆在重新連線後被截斷。官方網站可能再次出現這兩個情況。我們在 2026-11-25 的自測中，app.paseo.sh 0.17.4 搭配 0.11.2 的 daemon 兩者都沒有重現，但無法保證。主機上的對話本身不受影響。
 
 細節與驗證見 [HA Ingress、升級與驗證說明](docs/PASEO_HA.md)。

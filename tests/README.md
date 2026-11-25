@@ -26,8 +26,8 @@ The Omnigent runtime is a fixture: these tests do not validate provider logins,
 paid model responses or real HA Supervisor ingress. So is Agent Connect: the
 Agent Connect page must link the official site of the saved target in a new tab
 (answered locally, no network), hand out only the exact pairing link, and the
-retired `/paseo-web` paths must reach no Paseo bridge (404 from Pi Web through
-the real nginx configuration).
+retired `/paseo-web` paths (the old open link with its trailing slash included)
+must get nginx's own fixed 404 page, from neither Pi Web nor the Paseo bridge.
 
 CI runs these checks with Playwright 1.62.1 and retains screenshots/receipts.
 Set `CHROMIUM_EXECUTABLE` to reuse an installed Chromium locally. Continue to
@@ -45,6 +45,17 @@ acceptance; the compiled browser test does not replace them.
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROMIUM_EXECUTABLE=/path/to/chrome \
   node tests/paseo-browser.mjs
 ```
+
+`tests/paseo-launch.test.mjs` runs `rootfs/usr/local/lib/pi-paseo-ha/launch.mjs`, the
+file the s6 `pi-web` service executes, from a copy of the rootfs layout with a
+stand-in for the Omnigent launcher: it must serve `/paseo/setup` on its private
+socket, start its child by its own location, restore the lifecycle even when
+registration fails, and stop inside its 5 s budget. `node --check` only parses
+that file; a renamed export passes every unit test and then fails at link time.
+`omnigent-image-smoke.mjs` starts the same entry point in the built image with
+the real Omnigent launcher and Pi Web (`PI_PASEO_AUTO_SETUP=false`, so no
+daemon), reads `/paseo/setup` and `/api/paseo` from `paseo-ha.sock`, and fails
+on a SyntaxError, a missing module or a failed-start line in the launcher log.
 
 The native browser suite also saves separate Omnigent and Paseo fixture
 conversations through the real SDK, plus a stale `onboarding.json` naming the

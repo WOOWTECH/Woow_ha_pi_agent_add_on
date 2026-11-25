@@ -412,7 +412,7 @@ Bundled upstream packages retain their own licenses (`@agegr/pi-web` MIT, `@eare
 
 ## Agent Connect (Paseo, Woowtech Smart, Apporo Smart)
 
-See [HA integration, Ingress and upgrade notes](docs/PASEO_HA.md). The image bundles Agent Connect 0.1.23 and Omnigent 0.3.34, keeps Paseo beside Omnigent in Settings and retains Pi Web 0.12.0. Both bindings remain in Settings and create no setup conversation at startup.
+See [HA integration, Ingress and upgrade notes](docs/PASEO_HA.md). The image bundles Agent Connect 0.1.23 and Omnigent 0.3.34, keeps Agent Connect beside Omnigent in Settings and retains Pi Web 0.12.0. Both bindings remain in Settings and create no setup conversation at startup.
 
 **The Paseo option now opens the official Paseo app at https://app.paseo.sh/ in a new tab**, the same way the Woowtech Smart and Apporo Smart options open their own sites. The add-on no longer bundles or serves a copy of the Paseo web app (`/paseo-web`), and the settings page accepts only a pairing link of the exact form `https://app.paseo.sh/#offer=<base64url>` for Paseo (or the selected Smart site's own origin with the same form); anything else is refused.
 

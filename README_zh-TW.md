@@ -388,7 +388,7 @@ MIT © [WOOWTECH](https://github.com/WOOWTECH)。完整條款見 [`LICENSE`](LIC
 
 ## Agent Connect（Paseo）
 
-內建 Agent Connect 0.1.23 與 Omnigent 0.3.34，在設定中將 Paseo 放在 Omnigent 右側，並保留 Pi Web 0.12.0。兩者不建立或自動開啟設定對話，也沒有首頁或右上角快捷入口；只有使用者在 **Settings → Paseo** 按下配對按鈕時才開始配對。[HA Ingress、升級與驗證說明](docs/PASEO_HA.md)。
+內建 Agent Connect 0.1.23 與 Omnigent 0.3.34，在設定中將 Agent Connect 放在 Omnigent 右側，並保留 Pi Web 0.12.0。兩者不建立或自動開啟設定對話，也沒有首頁或右上角快捷入口；只有使用者在 **Settings → Agent Connect** 按下配對按鈕時才開始配對。[HA Ingress、升級與驗證說明](docs/PASEO_HA.md)。
 
 **Paseo 選項現在會在新分頁開啟官方網站 https://app.paseo.sh/**，與 Woowtech Smart、Apporo Smart 各自開啟自己的網站相同。Add-on 不再內建或提供 Paseo 網頁（`/paseo-web`）；設定頁對 Paseo 只接受 `https://app.paseo.sh/#offer=<base64url>` 這個固定格式的配對連結（兩個 Smart 選項則是各自官方網站的同格式連結），其他一律拒絕。
 

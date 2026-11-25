@@ -76,17 +76,23 @@ its version and phase, selected and active target, pending state, whether the
 daemon runs, each engine's status and modes), never the plugin's raw status,
 paths, tokens or its other settings.
 
-Nothing else is served. The nginx location covers `/paseo` and `/api/paseo`
-only, so `/paseo-web` is no longer forwarded to the bridge (the request now
-reaches Pi Web, which has no such page), and the bridge itself answers 404 for
-it. The settings page keeps its strict CSP (`default-src
+Nothing else is served. The bridge's nginx location covers `/paseo` and
+`/api/paseo` only. `/paseo-web` (the retired client, and the old open link a
+bookmark may still hold) has a location of its own that only does `return 404`:
+nginx answers it itself and nothing is proxied. Left to Pi Web, the old link
+`/paseo-web/` was seen (Pi Web 0.10.0) to be redirected to a URL without the
+Ingress prefix, which leaves Ingress. `return` answers every client alike, so it discloses nothing,
+and the server-level Supervisor-only allow/deny are unchanged. The bridge also
+answers 404 for the path. The settings page keeps its strict CSP (`default-src
 'none'`, same-origin scripts and connections, `frame-ancestors 'self'`); the
 official sites it links are separate sites in their own tabs. HTML, setup and
 API responses stay private/no-store.
 
-Pairing is an explicit POST operation. Its private fragment stays in the link
-that opens the official site and is not sent to nginx or to any server. The
-persistent private pairing record is owned by the plugin; browser
+Pairing is an explicit POST operation. The link it returns crosses nginx and HA
+Ingress once, in the body of that response; it is never part of a requested
+URL, so no access log records it. When the browser opens the link, the fragment
+(`#offer=...`) is not sent to any server: the official site reads it in the
+page. The persistent private pairing record is owned by the plugin; browser
 logs/screenshots from real accounts must not be published. The Ingress URL is
 session-specific: reopen from HA after it expires.
 
@@ -104,7 +110,7 @@ settings are unchanged.
 
 No options, ports, architectures, image name or existing data formats change.
 Credentials, settings and sessions are preserved. First install registers the
-bundled plugin once; it does not create or open an onboarding conversation. The plugin supervisor prepares the service independently. Pairing requires a button press in Settings → Paseo.
+bundled plugin once; it does not create or open an onboarding conversation. The plugin supervisor prepares the service independently. Pairing requires a button press in Settings → Agent Connect.
 A marker prevents reinstallation after removal; pre-existing package overrides
 and explicit disabling are retained. Package enable/disable/removal is observed
 without restarting Pi Web. A manual service pause survives container restart;
@@ -161,11 +167,14 @@ the repository's actual nginx config. Only listener/socket/log paths are adapted
 for local isolation; a small front proxy simulates Supervisor path stripping.
 No browser JS override is used. It covers desktop/tablet/390px mobile, settings
 order, the private API and pairing link, mobile scrolling, the official-site
-link opening in a new tab (answered locally, no network), the 404 for
+link opening in a new tab (answered locally, no network), nginx's own 404 for
 `/paseo-web`, CSP and absence of pairing offers in access logs.
 `tests/paseo-browser.mjs` repeats the Agent Connect checks without nginx and Pi
 Web, including a target switch that only pairs after a restart.
-`tests/paseo-contract.test.mjs` drives the real Agent Connect archive's status,
+`tests/paseo-launch.test.mjs` runs the s6 entry point `launch.mjs` for real (a copy of
+the rootfs layout, a stand-in for the Omnigent launcher) and the image smoke runs
+it with the real Omnigent launcher and Pi Web, so a broken import cannot pass on
+`node --check` alone. `tests/paseo-contract.test.mjs` drives the real Agent Connect archive's status,
 target save and pairing-link code through this repository's bridge, and
 `tests/versions.test.mjs` checks the archive against its pins. Provider
 responses and the Agent Connect plugin in the browser tests are fixtures: this
