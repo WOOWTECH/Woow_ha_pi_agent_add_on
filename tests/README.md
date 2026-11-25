@@ -141,6 +141,54 @@ byte-identical copy of the PaaS image's (paas-odoo-ci
 and runs `patches/tests/omnigent-reminder-patch.test.py` against the patched
 package; a different Omnigent version or a moved anchor fails the build.
 
+## The Paseo runtime is two image layers
+
+CI's "Enforce transport-safe image layers" step (`tests/assert-image-layer-sizes.mjs`)
+rejects any new or changed layer over 256 MiB compressed, the size at which pulls
+on slow hosts ended in EOF. It runs on pushes to `main`, after the merge, never on a
+PR, so a layer that grows past the limit is found only when it is too late to
+change the PR. The managed Paseo runtime in `/opt/woow/paseo-runtime` is the
+heaviest single thing in the image, and most of it is the Claude Agent SDK's
+platform binary (`node_modules/@anthropic-ai/claude-agent-sdk-linux-<arch>`),
+which grows with the SDK. Measured on 2026-11-25 with
+`tests/measure-paseo-runtime-layers.mjs` (`tar | gzip -6`, musl SDK removed):
+
+| Paseo | one layer | layer a (all but `@anthropic-ai`) | layer b (`@anthropic-ai`) |
+| --- | --- | --- | --- |
+| 0.11.2 | 162.3 MiB (63% of the limit) | 63.9 MiB | 98.4 MiB |
+| 0.17.4 | 235.6 MiB (92%) | 71.1 MiB | 164.5 MiB (64%) |
+
+So the runtime is two layers. Docker `COPY` cannot exclude a subdirectory (copying
+the parent and the subdirectory would store the files twice), so
+`patches/split-paseo-runtime.mjs` runs in the builder RUN that installs the runtime
+and makes two trees below `/opt/woow/paseo-runtime-layers/{a,b}` that keep the full
+destination path; the final stage copies each with a plain
+`COPY --from=paseo-builder <tree>/ /`. The trees are hard links to the installed
+files (plus recreated symlinks and directories), so every file keeps its inode,
+bytes, mode, owner and mtime, and nothing is copied. Every file, symlink and
+directory must end up in exactly one layer (only the directories above
+`@anthropic-ai` are in both); the script checks that against a listing taken
+before, refuses anything else and removes its output, and also refuses a hard link
+that would straddle the layers. It takes the release directory from the plugin's
+own runtime layout, knows no version or revision, and, run as a command, asks the
+plugin whether the runtime is ready before the split and again with both layers
+merged.
+
+`tests/paseo-runtime-layers.test.mjs` covers it with a synthetic runtime (exact
+coverage, inodes, modes, owners, mtimes, symlinks, the self-check refusing bad
+output, refusals, idempotence, the command) and checks the Dockerfile: one RUN
+builds and splits, the final stage has exactly the two plain copies in this
+order, no wildcard or variable (the Store's source-build check refuses
+substitution). `tests/paseo-image-smoke.mjs` checks in the built image that the
+SDK package of layer b is there. To measure a lock or an installed runtime
+(opt-in; it runs `npm ci`, so it needs the registry):
+
+```sh
+node tests/measure-paseo-runtime-layers.mjs --lock /path/to/runtime   # package.json + package-lock.json
+node tests/measure-paseo-runtime-layers.mjs --archive candidate-packages/woowtech-pi-paseo-<version>.tgz
+node tests/measure-paseo-runtime-layers.mjs --runtime /path/to/installed/paseo-runtime
+```
+
 ## Local source-build context
 
 PR image builds use the Store downloader from the workflow's pinned

@@ -24,6 +24,10 @@ try {
   const { locations } = await import('/opt/woow/pi-paseo-plugin/src/state.mjs');
   const layout = await import('/opt/woow/pi-paseo-plugin/src/runtime-layout.mjs');
   assert.equal(layout.runtimeReady(locations()), true);
+  // The runtime arrives as two image layers; the one that holds the Claude SDK's platform package must be there too.
+  const sdkScope = path.join(layout.runtimeDirectory(locations()), 'node_modules/@anthropic-ai');
+  assert.equal(fs.existsSync(path.join(sdkScope, `claude-agent-sdk-linux-${process.arch}`)), true, 'the layer with the Claude SDK platform package is part of the image');
+  assert.equal(fs.existsSync(path.join(sdkScope, `claude-agent-sdk-linux-${process.arch}-musl`)), false, 'no musl copy');
   const native = await verifyNativeRuntime({ bundle: '/opt/woow/pi-paseo-plugin', runtimeDir: process.env.PI_PASEO_RUNTIME_DIR });
   const cli = path.join(layout.runtimeDirectory(locations()), 'node_modules/@getpaseo/cli/bin/paseo');
   assert.equal(execFileSync(process.execPath, [cli, '--version'], { encoding: 'utf8' }).trim(), pins.paseoVersion);

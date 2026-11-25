@@ -186,6 +186,14 @@ registry manifests and Store/local-build synchronization. Live Supervisor and
 real-account model acceptance remain separate; this fanout does not operate live
 HA, VMs or Pi4.
 
-The measured local gzip runtime layer is about 164 MiB, below the 256 MiB
-changed-layer budget. This estimate does not replace the final registry manifest
-check after publication; that gate remains part of post-release verification.
+The runtime in `/opt/woow/paseo-runtime` is two image layers, so that neither can
+reach the 256 MiB limit that `tests/assert-image-layer-sizes.mjs` applies to new
+layers on pushes to `main` (after the merge, never on a PR): the Claude Agent
+SDK's platform binary under `node_modules/@anthropic-ai`, most of the runtime and
+growing with the SDK, is layer b; everything else is layer a. Measured on
+2026-11-25 (`tar | gzip -6`, `tests/measure-paseo-runtime-layers.mjs`): Paseo
+0.11.2 is 162.3 MiB as one layer, 63.9 + 98.4 MiB as two; Paseo 0.17.4 is 235.6 MiB
+as one layer (92% of the limit), 71.1 + 164.5 MiB as two. The files, modes, owners and
+mtimes in the image are those of one copy; `tests/README.md` explains how. These
+numbers do not replace the final registry manifest check after publication; that
+gate remains part of post-release verification.

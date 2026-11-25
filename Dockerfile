@@ -272,7 +272,8 @@ RUN cp "/tmp/$(< /tmp/pins/omnigent-plugin/archive)" /tmp/plugin.tgz \
 # The HA bridge consumes the plugin API; never apply its Pi Web 0.10 overlay.
 # Build the Paseo daemon runtime once for each native image architecture. The
 # plugin no longer carries a web client: every connection target opens its
-# official site.
+# official site. The same RUN then splits the runtime into two trees of hard
+# links (patches/split-paseo-runtime.mjs) for the two layers below.
 FROM piweb-builder AS paseo-builder
 COPY --from=pins /pins/agent-connect/ /tmp/pins/agent-connect/
 # Unpublished reviewable candidate: use the exact checked archive in this branch.
@@ -286,6 +287,7 @@ RUN echo "$(< /tmp/pins/agent-connect/sha256)  /tmp/paseo.tgz" | sha256sum --che
     && PI_PASEO_EXPECTED_VERSION="$(< /tmp/pins/agent-connect/version)" \
        PI_PASEO_EXPECTED_RUNTIME_REVISION="$(< /tmp/pins/agent-connect/runtime-revision)" \
        node /opt/patches/build-paseo.mjs \
+    && node /opt/patches/split-paseo-runtime.mjs /opt/woow/pi-paseo-plugin /opt/woow/paseo-runtime /opt/woow/paseo-runtime-layers \
     && rm -rf /tmp/paseo.tgz /tmp/npm-cache
 
 # Shared runtime is the same verified candidate used by native and k3s.
@@ -384,7 +386,14 @@ COPY --from=omnigent-builder /opt/omnigent/python /opt/omnigent/python
 COPY --from=omnigent-builder /opt/omnigent/venv /opt/omnigent/venv
 COPY --from=omnigent-builder /opt/woow/pi-omnigent-plugin /opt/woow/pi-omnigent-plugin
 COPY --from=paseo-builder /opt/woow/pi-paseo-plugin /opt/woow/pi-paseo-plugin
-COPY --from=paseo-builder /opt/woow/paseo-runtime /opt/woow/paseo-runtime
+# The Paseo runtime, /opt/woow/paseo-runtime, in two layers: the Claude Agent SDK's
+# platform binary (node_modules/@anthropic-ai, most of its weight) apart from the
+# rest, so neither comes near the 256 MiB layer limit that
+# tests/assert-image-layer-sizes.mjs enforces on main. COPY cannot exclude a
+# subdirectory, so the builder stage made two trees that keep the full path;
+# together they are the runtime, file for file.
+COPY --from=paseo-builder /opt/woow/paseo-runtime-layers/a/ /
+COPY --from=paseo-builder /opt/woow/paseo-runtime-layers/b/ /
 COPY --from=shared-runtime-builder /opt/woow/pi-agent-shared-runtime /opt/woow/pi-agent-shared-runtime
 RUN ln -s /usr/local/lib/node_modules/@agegr/pi-web/node_modules /opt/woow/pi-paseo-plugin/node_modules \
     && ln -s /opt/woow/pi-paseo-plugin/bin/cli.mjs /usr/local/bin/pi-paseo \

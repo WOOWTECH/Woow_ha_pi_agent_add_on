@@ -78,7 +78,7 @@ test('the Dockerfile, CI and image checks read the pins instead of repeating the
   const literals = [omnigentPlugin.version, omnigentPlugin.sha256, pins.omnigent.version, pins.claude.version, pins.codex.version,
     agentConnect.version, agentConnect.sha256, agentConnect.sourceCommit, agentConnect.paseoVersion, agentConnect.runtimeRevision];
   for (const file of ['Dockerfile', '.github/workflows/build.yml', 'tests/omnigent-image-smoke.mjs', 'tests/cli-image-layers.mjs',
-    'tests/paseo-image-smoke.mjs', 'tests/paseo-native-runtime.mjs', 'patches/build-paseo.mjs']) {
+    'tests/paseo-image-smoke.mjs', 'tests/paseo-native-runtime.mjs', 'patches/build-paseo.mjs', 'patches/split-paseo-runtime.mjs']) {
     const text = read(file);
     for (const literal of literals) assert.equal(mentions(text, literal), false, `${file} repeats ${literal}; read cli-runtime/versions.json`);
   }
