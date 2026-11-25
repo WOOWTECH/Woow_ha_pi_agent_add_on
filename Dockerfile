@@ -25,7 +25,6 @@ RUN set -euo pipefail; \
     pin omnigent-plugin/sha256 .omnigentPlugin.sha256 '^[0-9a-f]{64}$'; \
     pin agent-connect/version .agentConnect.version "${semver}"; \
     pin agent-connect/sha256 .agentConnect.sha256 '^[0-9a-f]{64}$'; \
-    pin agent-connect/paseo-version .agentConnect.paseoVersion "${semver}"; \
     pin agent-connect/runtime-revision .agentConnect.runtimeRevision '^[0-9]+[.][0-9]+[.][0-9]+-r[0-9]+-[0-9a-f]{12}$'
 
 # =============================================================================
@@ -277,9 +276,9 @@ RUN cp "/tmp/$(< /tmp/pins/omnigent-plugin/archive)" /tmp/plugin.tgz \
 FROM piweb-builder AS paseo-builder
 COPY --from=pins /pins/agent-connect/ /tmp/pins/agent-connect/
 # Unpublished reviewable candidate: use the exact checked archive in this branch.
-# candidate-packages/ holds exactly one woowtech-pi-paseo-*.tgz (a second match
-# fails this COPY; tests/versions.test.mjs checks it earlier) and its checksum
-# must be the one pinned in cli-runtime/versions.json.
+# candidate-packages/ holds exactly one woowtech-pi-paseo-*.tgz (tests/versions.test.mjs
+# checks that). What this COPY does with a second match is not relied on: the sha256
+# check below, against the pin in cli-runtime/versions.json, decides which bytes are built.
 COPY candidate-packages/woowtech-pi-paseo-*.tgz /tmp/paseo.tgz
 RUN echo "$(< /tmp/pins/agent-connect/sha256)  /tmp/paseo.tgz" | sha256sum --check --strict \
     && mkdir -p /opt/woow/pi-paseo-plugin \

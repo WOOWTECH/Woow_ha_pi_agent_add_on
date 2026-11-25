@@ -64,6 +64,7 @@ test('every target opens its own official site and pairs only through the exact 
     for (const value of [{ target: others[0], url: `${origins[others[0]]}/#offer=private` }, { target, url: `${origins[others[0]]}/#offer=private` },
       { target, url: `${origin}.evil.test/#offer=private` }, { target, url: `https://evil.${host}/#offer=private` }, { target, url: `${origin}:444/#offer=private` },
       { target, url: `${origin}:443/#offer=private` }, { target, url: `https://ａ${host.slice(1)}/#offer=private` }, { target, url: origin.replace('https://', 'HTTPS://') + '/#offer=private' },
+      { target, url: `https://${host}./#offer=private` }, { target, url: `https://${host.toUpperCase()}/#offer=private` }, { target, url: `https://${host[0].toUpperCase()}${host.slice(1)}/#offer=private` },
       { target, url: origin.replace('https://', 'http://') + '/#offer=private' }, { target, url: origin.replace('https://', 'https://user:secret@') + '/#offer=private' },
       { target, url: `${origin}/welcome#offer=private` }, { target, url: `${origin}/?next=evil#offer=private` }, { target, url: `${origin}/#unknown=private` },
       { target, url: `${origin}/#offer=` }, { target, url: `${origin}/#offer=bad!` }, { target, url: `${origin}/#offer=a b` }, { target, url: `${origin}/#offer=a\nb` },

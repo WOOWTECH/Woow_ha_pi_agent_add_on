@@ -5,7 +5,9 @@ import { ingressPrefix } from './ingress.mjs';
 import { randomBytes } from 'node:crypto';
 import { createPaseoBridge } from './bridge.mjs';
 
-const staticRoot = '/usr/local/share/pi-paseo-ha';
+// <prefix>/lib/pi-paseo-ha/server.mjs serves <prefix>/share/pi-paseo-ha: /usr/local in the
+// image, or the copy of rootfs a test runs from.
+const staticRoot = path.resolve(import.meta.dirname, '../../share/pi-paseo-ha');
 const files = new Map([['/paseo', ['index.html', 'text/html']], ['/paseo/', ['index.html', 'text/html']], ['/paseo/setup', ['index.html', 'text/html']],
   ['/paseo/app.js', ['app.js', 'application/javascript']], ['/paseo/style.css', ['style.css', 'text/css']]]);
 // Only the bridge's own codes and the plugin errors these actions can raise reach

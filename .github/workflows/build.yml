@@ -274,7 +274,7 @@ jobs:
     - name: Ingress shim and ChatGPT OAuth patch tests
       run: |
         node --test patches/tests/chatgpt-device-id.test.mjs
-        node --test tests/omnigent-ha.test.mjs tests/paseo-ha.test.mjs tests/paseo-settings-ui.test.mjs tests/launcher-stop.test.mjs
+        node --test tests/omnigent-ha.test.mjs tests/paseo-ha.test.mjs tests/paseo-settings-ui.test.mjs tests/paseo-launch.test.mjs tests/launcher-stop.test.mjs
         for file in rootfs/usr/local/lib/pi-omnigent-ha/*.mjs rootfs/usr/local/share/pi-omnigent-ha/*.js rootfs/usr/local/lib/pi-paseo-ha/*.mjs rootfs/usr/local/share/pi-paseo-ha/*.js; do node --check "$file"; done
         node tests/shared-agent-state.mjs
         node tests/cli-wrappers.mjs

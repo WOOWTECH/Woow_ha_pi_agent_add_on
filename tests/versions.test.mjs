@@ -87,7 +87,7 @@ test('the Dockerfile, CI and image checks read the pins instead of repeating the
   assert.match(dockerfile, /^COPY cli-runtime\/versions\.json \/usr\/local\/share\/woow-ha-pi-agent\/versions\.json$/m,
     'the image smoke reads the pins the image was built from');
   // Agent Connect: the pins stage splits the pins; the builder takes the one vendored archive by pattern.
-  for (const [pin, key] of [['version', 'version'], ['sha256', 'sha256'], ['paseo-version', 'paseoVersion'], ['runtime-revision', 'runtimeRevision']]) {
+  for (const [pin, key] of [['version', 'version'], ['sha256', 'sha256'], ['runtime-revision', 'runtimeRevision']]) {
     assert.match(dockerfile, new RegExp(`^\\s*pin agent-connect/${pin} \\.agentConnect\\.${key} `, 'm'), `the pins stage reads agentConnect.${key}`);
   }
   assert.match(dockerfile, /^COPY --from=pins \/pins\/agent-connect\/ \/tmp\/pins\/agent-connect\/$/m);

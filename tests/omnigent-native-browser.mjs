@@ -204,9 +204,17 @@ try {
     const setupResponse = await context.request.get(base + '/paseo/setup');
     assert.ok(setupResponse.headers()['content-security-policy'].includes("frame-ancestors 'self'"));
     assert.ok(!(await setupResponse.text()).includes('paseo-web'), 'the settings page links no local client');
-    // The bundled client is gone: through the real nginx config these paths reach Pi Web, which has no such page.
-    for (const retired of ['/paseo-web', '/paseo-web/welcome', '/paseo-web/settings', '/paseo-web/_expo/static/js/web/index-0123456789abcdef.js']) {
-      assert.equal((await context.request.get(base + retired, { maxRedirects: 0 })).status(), 404, `${retired} is no longer served`);
+    // The bundled client is gone. The real nginx config answers these paths itself with its fixed 404 page: not Pi Web
+    // (which was seen to redirect the old open link `/paseo-web/` to a URL without the Ingress prefix) and not the
+    // bridge (JSON). The status alone cannot tell the three apart, so the page itself is checked.
+    for (const retired of ['/paseo-web', '/paseo-web/', '/paseo-web/welcome', '/paseo-web/settings', '/paseo-web/_expo/static/js/web/index-0123456789abcdef.js']) {
+      const response = await context.request.get(base + retired, { maxRedirects: 0 });
+      assert.equal(response.status(), 404, `${retired} is no longer served`);
+      assert.match(response.headers()['content-type'] || '', /^text\/html/, `${retired}: nginx's page is HTML, the bridge answers JSON`);
+      assert.equal(response.headers().location, undefined, `${retired}: no redirect`);
+      const body = await response.text();
+      assert.match(body, /<center><h1>404 Not Found<\/h1><\/center>[\s\S]*<center>nginx<\/center>/, `${retired}: nginx's own error page`);
+      assert.doesNotMatch(body, /NOT_FOUND|could not be found/, `${retired}: neither the bridge's code nor Pi Web's page`);
     }
     await page.screenshot({ path: path.join(evidence, `paseo-${viewport.width}.png`), fullPage: true });
     await select('omnigent');

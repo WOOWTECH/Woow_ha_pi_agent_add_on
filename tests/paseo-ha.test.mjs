@@ -93,6 +93,7 @@ test('each target accepts exactly https://<its origin>/#offer=<base64url> and re
       origin.replace('https://', 'http://') + '/#offer=x', origin.replace('https://', 'HTTPS://') + '/#offer=x', origin.toUpperCase() + '/#offer=x',
       origin.replace('https://', 'https://user@') + '/#offer=x', origin.replace('https://', 'https://user:secret@') + '/#offer=x',
       `https://${host}∕evil.test/#offer=x`, `https://ａ${host.slice(1)}/#offer=x`,
+      `https://${host}./#offer=x`, `https://${host.toUpperCase()}/#offer=x`, `https://${host[0].toUpperCase()}${host.slice(1)}/#offer=x`,
       `//${host}/#offer=x`, `javascript:alert(1)`, 'data:text/html,x',
       // another path, query or fragment
       `${origin}/welcome#offer=x`, `${origin}/pair#offer=x`, `${origin}//#offer=x`, `${origin}/?redirect=evil#offer=x`,
@@ -297,6 +298,23 @@ test('the bundled client is gone: every /paseo-web route is a 404 that never rea
   }
   assert.deepEqual(f.calls, [], 'no route consulted the plugin');
 });
+test('the Ingress prefix is templated into the page only when it is a Supervisor Ingress path', async t => {
+  // ingressPrefix() is the only thing between X-Ingress-Path and the HTML: nginx whitelists it too, this is the second line.
+  const f = fakePlugin();
+  const base = await listen(t, { bridge: f.bridge, directory: panelDirectory });
+  const good = '/api/hassio_ingress/fixture01234567890123';
+  const meta = html => html.match(/<meta name="ingress-prefix" content="([^"]*)">/)?.[1];
+  const page = async value => (await fetch(base + '/paseo/setup', { headers: value === undefined ? {} : { 'X-Ingress-Path': value } })).text();
+  assert.equal(meta(await page(good)), good);
+  assert.equal(meta(await page()), '', 'no header, no prefix');
+  for (const hostile of ['"><script>bad</script>', '/api/hassio_ingress/short', `/api/hassio_ingress/${'a'.repeat(129)}`, '//evil.test',
+    'https://evil.test/api/hassio_ingress/fixture01234567890123', `${good}/../x`, `${good}?x=1`, `${good}"onload="bad`, `${good}\\`]) {
+    const html = await page(hostile);
+    assert.equal(meta(html), '', hostile);
+    assert.ok(!html.includes('<script>bad') && !html.includes('onload="bad') && !html.includes('evil.test'), `${hostile} reached the page`);
+    assert.ok(html.includes('src="/paseo/app.js"') && html.includes('href="/paseo/style.css"'), `${hostile}: the page falls back to unprefixed paths`);
+  }
+});
 test('retired and missing static routes are 404; only listed codes reach the page, Node and system codes stay in the log', async t => {
   const logged = []; t.mock.method(console, 'error', message => { logged.push(String(message)); });
   let failure;
@@ -331,18 +349,39 @@ test('retired and missing static routes are 404; only listed codes reach the pag
 });
 
 // --- nginx and the shipped files ---
-test('nginx no longer routes /paseo-web: the Paseo location covers only the settings page and its API', () => {
+/** The `location` blocks that hold no nested braces, in file order (the catch-all holds the JS shim and is checked apart). */
+const nginxLocations = conf => [...conf.matchAll(/location\s+(~\*?|\^~|=)?\s*(\S+)\s*\{([^{}]*)\}/g)].map(([, modifier = '', pattern, body]) => ({ modifier, pattern, body }));
+/** nginx's choice: the first matching regex location in file order, else the catch-all prefix `/`. */
+const nginxPick = (locations, request) => locations.find(item => item.modifier === '~' && new RegExp(item.pattern).test(request))?.body ?? 'location /';
+test('nginx answers the retired /paseo-web paths itself, and only the settings page and its API reach the Paseo bridge', () => {
   const conf = fs.readFileSync(path.join(root, 'rootfs/etc/nginx/nginx.conf'), 'utf8');
-  assert.doesNotMatch(conf, /paseo-web/);
-  const block = conf.match(/location ~ (\S+) \{[^}]*proxy_pass http:\/\/unix:\/data\/pi-agent\/paseo-ha\.sock;/);
-  assert.ok(block, 'one regex location proxies to the Paseo settings socket');
-  const route = new RegExp(block[1]);
-  for (const request of ['/paseo', '/paseo/', '/paseo/setup', '/paseo/app.js', '/paseo/style.css', '/api/paseo']) assert.ok(route.test(request), request);
-  for (const request of ['/paseo-web', '/paseo-web/', '/paseo-web/welcome', '/paseo-web/_expo/static/js/web/index-0123456789abcdef.js', '/paseo-webx', '/paseox', '/api/paseo-web', '/api/paseox']) assert.ok(!route.test(request), request);
+  const locations = nginxLocations(conf);
+  assert.match(conf, /^\s*location \/ \{/m, 'the catch-all that serves Pi Web is still there');
+  assert.equal((conf.match(/\{/g) || []).length, (conf.match(/\}/g) || []).length, 'balanced braces');
+  const serverHead = conf.slice(conf.indexOf('server {'), conf.indexOf('location', conf.indexOf('server {')));
+  assert.match(serverHead, /listen 172\.30\.32\.1:30142[^;]*;\s*allow 172\.30\.32\.2;\s*deny all;/, 'the Supervisor-only rules sit at server level, before every location');
+  assert.equal((conf.match(/^\s*(?:allow|deny)\s/gm) || []).length, 2, 'no location adds or relaxes an allow/deny');
+  const paseo = nginxPick(locations, '/paseo/setup');
+  assert.match(paseo, /proxy_pass http:\/\/unix:\/data\/pi-agent\/paseo-ha\.sock;/);
+  for (const request of ['/paseo', '/paseo/', '/paseo/setup', '/paseo/app.js', '/paseo/style.css', '/api/paseo']) assert.equal(nginxPick(locations, request), paseo, request);
+  const retired = locations.filter(item => /paseo-web/.test(item.pattern));
+  assert.equal(retired.length, 1); assert.equal(retired[0].modifier, '~');
+  assert.equal(retired[0].body.replace(/\s+/g, ' ').trim(), 'return 404;', 'it only answers: nothing is proxied, nothing is relaxed');
+  for (const request of ['/paseo-web', '/paseo-web/', '/paseo-web/welcome', '/paseo-web/settings', '/paseo-web/_expo/static/js/web/index-0123456789abcdef.js']) {
+    assert.equal(nginxPick(locations, request), retired[0].body, `${request} is answered by nginx`);
+  }
+  // Near misses are neither the retired path nor the bridge; they keep their usual route.
+  for (const request of ['/paseo-webx', '/paseox', '/api/paseo-web', '/api/paseox', '/']) assert.ok(![paseo, retired[0].body].includes(nginxPick(locations, request)), request);
+  assert.match(nginxPick(locations, '/omnigent'), /omnigent-ha\.sock/);
 });
 test('nothing the image ships or builds refers to the retired bundled web client', () => {
   const walk = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? walk(path.join(directory, entry.name)) : [path.join(directory, entry.name)]);
   const files = [...walk(path.join(root, 'rootfs')), path.join(root, 'Dockerfile'), path.join(root, 'patches/build-paseo.mjs')];
   assert.ok(files.length > 20);
-  for (const file of files) assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /paseo-web|web-client|webClient|WEB_CLIENT|prepareImage|serveWebClient|ensureWebClient/, path.relative(root, file));
+  for (const file of files) {
+    let text = fs.readFileSync(file, 'utf8');
+    // The one deliberate mention: nginx's own 404 for the retired path (and the comment that explains it).
+    if (file.endsWith('nginx.conf')) text = text.replace(/^\s*#.*$/gm, '').replace(/location ~ \^\/paseo-web\(\/\|\$\) \{\s*return 404;\s*\}/, '');
+    assert.doesNotMatch(text, /paseo-web|web-client|webClient|WEB_CLIENT|prepareImage|serveWebClient|ensureWebClient/, path.relative(root, file));
+  }
 });
