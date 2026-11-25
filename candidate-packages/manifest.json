@@ -8,10 +8,10 @@
       "sourceCommit": "e51849dfa340a2f91bcc7041092749d1b4859c70"
     },
     {
-      "file": "woowtech-pi-paseo-0.1.20.tgz",
-      "sha256": "1574c1bd1d0023c7b536c9feb773e1cdded929104d79cfb05b1deda5846203f8",
+      "file": "woowtech-pi-paseo-0.1.23.tgz",
+      "sha256": "0e4f3c99dc26b670b59c5b328285655dd47b0d81f892707f7ce387ca551e0265",
       "status": "unpublished candidate; not a registry/release asset",
-      "sourceCommit": "aea2da4a83dbd220d8e9aa532ff91f9ac4e2c206",
+      "sourceCommit": "152e1c3afe4b7081fa859f40aa316059cc3fa4fd",
       "runtimeRevision": "0.11.2-r4-4cf9d40940bf"
     },
     {

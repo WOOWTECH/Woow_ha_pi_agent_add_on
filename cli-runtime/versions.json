@@ -1,10 +1,18 @@
 {
-  "_note": "The only place these bundled versions are written. The Dockerfile (stage pins), the CI test job and the tests read this file; claude/ and codex/ package locks and omnigent/requirements.* must pin the same versions (tests/versions.test.mjs). Pi Web stays pinned with its settings patch, Paseo in the Dockerfile.",
+  "_note": "The only place these bundled versions are written, beside the vendored archives and their record in candidate-packages/manifest.json. The Dockerfile (stage pins), the CI test job and the tests read this file; claude/ and codex/ package locks, omnigent/requirements.* and the manifest must pin the same versions (tests/versions.test.mjs). agentConnect is the @woowtech/pi-paseo archive: paseoVersion is the Paseo daemon it installs and runtimeRevision is derived from its runtime lockfile. Pi Web stays pinned with its settings patch.",
   "omnigentPlugin": {
     "version": "0.3.34",
     "archive": "candidate-packages/woowtech-pi-omnigent-plugin-0.3.34.tgz",
     "sha256": "e9e80783881f8a036cbf922d2f50fad860dac3bd23e170dda768ab3c56107945",
     "sourceCommit": "d8652e971bdf66133d699052ab9003d39ff69159"
+  },
+  "agentConnect": {
+    "version": "0.1.23",
+    "archive": "candidate-packages/woowtech-pi-paseo-0.1.23.tgz",
+    "sha256": "0e4f3c99dc26b670b59c5b328285655dd47b0d81f892707f7ce387ca551e0265",
+    "sourceCommit": "152e1c3afe4b7081fa859f40aa316059cc3fa4fd",
+    "paseoVersion": "0.11.2",
+    "runtimeRevision": "0.11.2-r4-4cf9d40940bf"
   },
   "omnigent": {
     "version": "0.16.0"

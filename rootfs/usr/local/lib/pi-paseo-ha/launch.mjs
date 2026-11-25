@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { seed, prepareImage, startLifecycle } from './lifecycle.mjs';
+import { seed, startLifecycle } from './lifecycle.mjs';
 import { createServer } from './server.mjs';
 import { superviseChild } from '../pi-launch/child-shutdown.mjs';
 
@@ -10,7 +10,7 @@ const savedRuntime = path.join(process.env.HOME, '.local/share/pi-paseo/runtime'
 process.env.PI_PASEO_RUNTIME_DIR ||= fs.existsSync(savedRuntime) ? savedRuntime : '/opt/woow/paseo-runtime';
 let stop, closing = false;
 try {
-  await prepareImage(); seed();
+  seed();
   stop = await startLifecycle();
 } catch { console.error('Paseo initialization needs attention; Pi Web remains available.'); }
 const server = createServer();

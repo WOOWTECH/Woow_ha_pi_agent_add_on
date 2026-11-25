@@ -386,6 +386,10 @@ MIT © [WOOWTECH](https://github.com/WOOWTECH)。完整條款見 [`LICENSE`](LIC
 
 本頁經由原有 Supervisor ingress 驗證與 nginx 來源限制，後端只監聽 `/data/pi-agent/omnigent-ha.sock`。不新增 LAN 連接埠。映像不包含 server 憑證或模型登入，不自動安裝或更新缺少的引擎。
 
-## Paseo 網頁整合
+## Agent Connect（Paseo）
 
-內建 Agent Connect 0.1.20 與 Omnigent 0.3.34，在設定中將 Paseo 放在 Omnigent 右側，並保留 Pi Web 0.12.0。兩者不建立或自動開啟設定對話，也沒有首頁或右上角快捷入口；只有使用者在 **Settings → Paseo** 按下配對按鈕時才開始配對。[HA Ingress、升級與驗證說明](docs/PASEO_HA.md)。
+內建 Agent Connect 0.1.23 與 Omnigent 0.3.34，在設定中將 Paseo 放在 Omnigent 右側，並保留 Pi Web 0.12.0。兩者不建立或自動開啟設定對話，也沒有首頁或右上角快捷入口；只有使用者在 **Settings → Paseo** 按下配對按鈕時才開始配對。[HA Ingress、升級與驗證說明](docs/PASEO_HA.md)。
+
+**Paseo 選項現在會在新分頁開啟官方網站 https://app.paseo.sh/**，與 Woowtech Smart、Apporo Smart 各自開啟自己的網站相同。Add-on 不再內建或提供 Paseo 網頁（`/paseo-web`）；設定頁對 Paseo 只接受 `https://app.paseo.sh/#offer=<base64url>` 這個固定格式的配對連結（兩個 Smart 選項則是各自官方網站的同格式連結），其他一律拒絕。
+
+從 0.15.24 或更早版本更新後，請重新啟動 Add-on（Supervisor 套用更新時會自行重啟）。先前透過舊的 `/paseo-web` 配對過的瀏覽器，需要在 app.paseo.sh 重新配對一次：開啟 **Settings → Agent Connect**，按配對按鈕再開啟連結。主機身分、供應商登入、對話與設定不變；舊的 `/paseo-web` 分頁與書籤不再可用。Agent Connect 的「允許代理彼此協作」開關（0.1.22 起，預設關閉）不在此設定頁，本頁不會變更它。

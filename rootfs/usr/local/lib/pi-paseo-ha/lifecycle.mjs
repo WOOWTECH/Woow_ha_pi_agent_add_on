@@ -71,28 +71,6 @@ export async function loadPlugin({ env = process.env, bundle = BUNDLE } = {}) {
   return null;
 }
 
-/** Seed the verified static release into persistent plugin state without
- * replacing credentials, sessions, configuration, or user-installed runtimes. */
-export async function prepareImage({ bundle = BUNDLE, image = '/opt/woow/paseo-web' } = {}) {
-  const { locations, assertSafePath } = await import(pathToFileURL(path.join(bundle, 'src/state.mjs')).href);
-  const { webClientManifest, webClientStatus } = await import(pathToFileURL(path.join(bundle, 'src/web-client.mjs')).href);
-  const loc = locations(), manifest = webClientManifest();
-  if (webClientStatus(loc).ready) return;
-  const destination = path.join(loc.stateDir, 'web-client', manifest.sha256);
-  assertSafePath(destination);
-  // The plugin owns repair of an incomplete cache under its runtime lock.
-  // Do not prevent registration or its normal retry supervisor from starting.
-  if (fs.existsSync(destination)) return;
-  fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 });
-  const temporary = destination + '.image-' + process.pid;
-  assertSafePath(temporary);
-  try {
-    fs.cpSync(path.join(image, 'web-client', manifest.sha256), temporary, { recursive: true, errorOnExist: true, force: false });
-    fs.renameSync(temporary, destination);
-  } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
-  if (!webClientStatus(loc).ready) throw new Error('Invalid prebuilt client');
-}
-
 /** Watch registration independently of a running model turn. Disabled/removal
  * tombstones win on boot; explicit service pauses stay paused across restarts. */
 export async function startLifecycle({ load = loadPlugin, intervalMs = 3000, stop = async plugin => {
