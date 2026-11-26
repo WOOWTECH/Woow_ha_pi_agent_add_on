@@ -1,15 +1,12 @@
 # Agent Connect release candidate — 2026-11-21
 
-This is coordinated source preparation, not a published release or deployment.
-Updated 2026-11-26 for HA Pi Agent 0.15.26: Agent Connect 0.1.25 (below);
-the shared runtime and Omnigent rows are unchanged.
-the shared runtime and Omnigent rows are unchanged. The pins themselves are
-written once, in `cli-runtime/versions.json`; this table is the readable record.
-The candidate archives are unpublished `npm pack` results, vendored in
-`candidate-packages/` for reviewable builds without inventing release URLs.
-Native pins use local `file://` inputs; HA uses verified `COPY` inputs. Their
-SHA-256 values identify the actual bytes. Publishing or repacking later requires
-coordinated consumer updates and the normal release gates.
+This document records coordinated source preparation and HA packaging; HA
+deployment remains pending. Updated 2026-11-26 for HA Pi Agent 0.15.26:
+Agent Connect 0.1.25 has been published as a verified GitHub release asset;
+the shared-runtime and Omnigent rows remain unpublished candidates. The pins
+are written once in `cli-runtime/versions.json`; this table is the readable
+record. SHA-256 values identify the actual vendored bytes. Native pins use
+local `file://` inputs; HA uses verified `COPY` inputs.
 
 | Input | Candidate version | SHA-256 |
 | --- | --- | --- |
@@ -158,6 +155,8 @@ Agent Connect 0.1.25 source is `43cc7b0623c47afdbad6e35e0df7bd03dd5c72d3`
 (tree identical to the pre-merge candidate `cbd4bd7c7901e89d76a773d30baf4c562ba83b84`).
 The vendored archive remains byte-pinned at SHA-256
 `9717988c00a4c830a3fa458ab1ae778515c90257faaac0e68e695fefbf7cd8d1`.
+The same bytes are the anonymously downloadable [Agent Connect v0.1.25 GitHub
+release asset](https://github.com/pi-paseo-plugin/releases/tag/v0.1.25).
 It adds Better Paseo 1.7.0 to the verified built-in catalog of the official
 Paseo 0.17.4 daemon and advances the prebuilt runtime to
 `0.17.4-r2-a651f42711da`. Tasks default on; chat enhancements and automatic

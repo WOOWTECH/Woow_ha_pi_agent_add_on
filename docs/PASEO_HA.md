@@ -39,14 +39,15 @@ display name or the "allow agents to collaborate" switch that Agent Connect
 0.1.22 added (`agentCollaboration`, off by default). The page has no such
 switch yet; it neither shows nor sets it.
 
-The image pins the locally packed, unpublished Agent Connect archive named in
+The image pins the Agent Connect archive named in
 `cli-runtime/versions.json`; its exact checksum is recorded there, in
 `candidate-packages/manifest.json` and in `AGENT_CONNECT_CANDIDATE.md`. Builds
-that fetch the public URL must wait for that exact artifact to be published. The
-selector remains disabled with an upgrade message when a user-selected older
-plugin lacks target support. Image, Ingress, upgrade-comparison and upgrade
-tests are required before publication. Existing paths and package identity
-remain compatible.
+use the vendored archive whose bytes are verified against the published
+[Agent Connect 0.1.25 GitHub release](https://github.com/pi-paseo-plugin/releases/tag/v0.1.25).
+The selector remains disabled with an upgrade message when a user-selected
+older plugin lacks target support. Image, Ingress, upgrade-comparison and
+upgrade tests are required before publishing the HA add-on. Existing paths and
+package identity remain compatible.
 
 ## Immutable image inputs
 

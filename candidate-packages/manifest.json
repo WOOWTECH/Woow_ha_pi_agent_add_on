@@ -10,7 +10,8 @@
     {
       "file": "woowtech-pi-paseo-0.1.25.tgz",
       "sha256": "9717988c00a4c830a3fa458ab1ae778515c90257faaac0e68e695fefbf7cd8d1",
-      "status": "unpublished candidate; not a registry/release asset",
+      "status": "verified GitHub release asset",
+      "releaseUrl": "https://github.com/pi-paseo-plugin/releases/tag/v0.1.25",
       "sourceCommit": "43cc7b0623c47afdbad6e35e0df7bd03dd5c72d3",
       "runtimeRevision": "0.17.4-r2-a651f42711da"
     },
