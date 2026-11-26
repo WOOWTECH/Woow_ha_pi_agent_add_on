@@ -42,8 +42,26 @@ try {
   assert.ok(extensions.extensions.some(extension => extension.path.includes('pi-omnigent-plugin')));
   console.log('SMOKE: discovering preinstalled dependencies without installers');
   const installer = await import(`${BUNDLE}/src/installer.mjs`);
-  const dependencies = await installer.installDependencies({ env: process.env, run: async () => { throw new Error('Unexpected runtime download'); } });
+  // Newer plugins run the maintenance preservation verifier even when every
+  // dependency is already in the image. Execute that exact guard, while still
+  // refusing every installer command (including python -m pip).
+  let maintenanceGuardRuns = 0;
+  const dependencies = await installer.installDependencies({
+    env: process.env,
+    run: async (command, args, options) => {
+      assert.equal(command, '/opt/omnigent/venv/bin/python', 'only the image SDK Python may run');
+      assert.equal(args.length, 7, 'only the maintenance guard argv is allowed');
+      assert.deepEqual(args.slice(0, 4), ['-I', '-B', path.join(BUNDLE, 'src/maintenance_preservation.py'), '--omnigent-bin']);
+      assert.equal(fs.realpathSync(args[4]), '/opt/omnigent/venv/bin/omnigent');
+      assert.deepEqual(args.slice(5), ['--state-dir', process.env.PI_OMNIGENT_STATE_DIR]);
+      assert.equal(options.env.PI_OMNIGENT_STATE_DIR, process.env.PI_OMNIGENT_STATE_DIR);
+      maintenanceGuardRuns += 1;
+      return installer.runCommand(command, args, options);
+    },
+  });
   assert.equal(dependencies.ok, true, JSON.stringify(dependencies.issues));
+  assert.equal(maintenanceGuardRuns, 1, 'the real source-preservation guard ran exactly once');
+  assert.equal(dependencies.maintenancePreservation.ok, true);
   assert.deepEqual(dependencies.installedEngines.sort(), ['claude', 'codex', 'pi']);
   assert.equal(dependencies.claude.path, '/usr/local/bin/claude');
   assert.equal(dependencies.claude.version, pins.claude.version);
