@@ -18,6 +18,7 @@ export function createPaseoBridge(load = loadPlugin) {
         state.connectionTargets?.some(item => item.id === target.id)),
       connectionTargets, settings: { target: selectedTarget },
       running: state.daemon?.running === true,
+      reachable: state.daemon?.reachable === true,
       providers: (state.providers || []).filter(row => providers.includes(row.provider)).map(row => ({
         provider: row.provider, status: clean(row.status), chatVerified: row.chatVerified === true,
         modes: (row.modes || []).map(mode => ({ id: clean(mode.id), label: clean(mode.label) })),
@@ -44,7 +45,15 @@ export function createPaseoBridge(load = loadPlugin) {
         const after = await snapshot(plugin);
         if (after.configurationPending || after.selectedTarget !== target || (paired.target ?? 'paseo') !== target) throw failure('CONFIGURATION_PENDING');
         return { url: pairUrl(paired.url, target), target };
-      } else if (body.action === 'start') await plugin.api.lifecycle({ action: 'enable', cwd: process.env.HOME });
+      } else if (body.action === 'start') {
+        const before = await snapshot(plugin);
+        if (before.configurationPending && before.running) throw failure('CONFIGURATION_PENDING');
+        if (body.target !== undefined && targetId(body.target) !== before.selectedTarget) throw failure('CONFIGURATION_PENDING');
+        const result = await plugin.api.lifecycle({ action: 'enable', cwd: process.env.HOME });
+        // enable schedules the supervisor; its immediate snapshot can still say
+        // disabled. Preserve the receipt so the page follows the actual startup.
+        return { ...await snapshot(plugin), startScheduled: result?.scheduled === true };
+      }
       else if (body.action === 'stop') await plugin.api.lifecycle({ action: 'stop' });
       else if (body.action === 'models' && providers.includes(body.provider)) {
         const rows = await plugin.api.listModels(body.provider);

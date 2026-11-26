@@ -138,7 +138,7 @@ function fakePlugin({ status = modernStatus, pair, saveConfig = true } = {}) {
   const plugin = { enabled: true, version: 'fixture', api };
   return { calls, plugin, api, bridge: createPaseoBridge(async () => plugin) };
 }
-const SNAPSHOT_KEYS = ['activeTarget', 'configurationPending', 'connectionTargets', 'enabled', 'installed', 'phase', 'providers', 'running', 'selectedTarget', 'settings', 'targetSelectionAvailable', 'version'];
+const SNAPSHOT_KEYS = ['activeTarget', 'configurationPending', 'connectionTargets', 'enabled', 'installed', 'phase', 'providers', 'reachable', 'running', 'selectedTarget', 'settings', 'targetSelectionAvailable', 'version'];
 test('status without webClient projects exactly the known fields: no web state, no agentCollaboration, no secrets', async () => {
   const f = fakePlugin();
   const status = await f.bridge.read();
@@ -165,6 +165,19 @@ test('bridge forwards lifecycle, refuses disabled packages and has no web client
   f.plugin.enabled = false;
   assert.equal((await f.bridge.read()).phase, 'disabled');
   await assert.rejects(f.bridge.act({ action: 'pair' }), { code: 'PLUGIN_UNAVAILABLE' });
+});
+
+test('start preserves a scheduled receipt and refuses pending or stale target requests without lifecycle writes', async () => {
+  const f = fakePlugin();
+  f.api.lifecycle = async () => ({ phase: 'starting', scheduled: true });
+  assert.equal((await f.bridge.act({ action: 'start', target: 'paseo' })).startScheduled, true);
+  for (const target of ['apporo', 'paseo']) {
+    const p = fakePlugin({ status: () => modernStatus({ settings: { target }, activeTarget: 'woowtech', configurationPending: true }) });
+    await assert.rejects(p.bridge.act({ action: 'start', target }), { code: 'CONFIGURATION_PENDING' });
+    assert.deepEqual(p.calls, []);
+  }
+  await assert.rejects(f.bridge.act({ action: 'start', target: 'apporo' }), { code: 'CONFIGURATION_PENDING' });
+  await assert.rejects(f.bridge.act({ action: 'start', target: 'custom' }), { code: 'INVALID_TARGET' });
 });
 test('pairing returns the official link of the saved target and refuses any other origin or the retired client path', async () => {
   for (const target of Object.keys(origins)) {
