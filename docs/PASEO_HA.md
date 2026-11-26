@@ -4,6 +4,14 @@ This change retains the official Pi Web 0.12.0 npm build and its SDK 1.1
 compatibility pins. It does **not** install the plugins' Pi Web 0.10 overlay.
 The native desktop tabs and mobile picker are MCP → Omnigent → Agent Connect.
 
+## Smart Tasks (0.15.26)
+
+Agent Connect 0.1.25 adds Better Paseo 1.7.0 to the official Paseo 0.17.4 daemon as a verified built-in plugin. This supplies the Tasks board, sidebar entry and settings panel for both Smart brands. The daemon remains the official package; no Smart web client is replaced or served by HA.
+
+Tasks default to enabled. Chat enhancements and automatic update checks default to disabled. The plugin's own Git/npm self-update commands are unavailable; updates arrive with a reviewed Agent Connect bundle. Existing explicit user preferences remain in effect.
+
+The image carries runtime `0.17.4-r2-a651f42711da`. Restart the add-on to move a running `0.17.4-r1` daemon onto it. Pairing, server identity, keys, conversations and settings remain in the existing Paseo data directory, and Tasks data is stored alongside them. No re-pairing or reset is needed. For rollback, stop the daemon, restore the matching earlier add-on bundle and keep the data directory intact.
+
 ## Target selection
 
 The Agent Connect settings page selects Paseo, Woowtech Smart or Apporo Smart.
@@ -123,7 +131,7 @@ and explicit disabling are retained. Package enable/disable/removal is observed
 without restarting Pi Web. A manual service pause survives container restart;
 shutdown stops the owned supervisor without persisting a user pause.
 
-The bundled runtime is `0.17.4-r1-a651f42711da`. If a daemon from a verified
+The bundled runtime is `0.17.4-r2-a651f42711da`. If a daemon from a verified
 older release is still running, the plugin leaves it serving and reports
 `RESTART_REQUIRED`; status, pairing, reload and stop use that daemon's own
 release. Stop and start in Settings to switch versions. An add-on update
