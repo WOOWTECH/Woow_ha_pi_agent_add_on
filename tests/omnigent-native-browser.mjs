@@ -65,7 +65,7 @@ const plugin = { locations: () => ({ stateDir }), version: '0.3.34', lifecycle: 
 const paseoOffer = 'eyJ2IjoyLCJzZXJ2ZXJJZCI6ImZpeHR1cmUifQ';
 const paseoCalls = [];
 const paseoPlugin = { enabled: true, version: 'fixture', api: {
-  status: async () => ({ phase: 'ready', daemon: { running: true }, providers: [{ provider: 'claude', status: 'ready' }, { provider: 'codex', status: 'ready' }, { provider: 'pi', status: 'ready' }] }),
+  status: async () => ({ phase: 'ready', activeTarget: 'paseo', daemon: { running: true, reachable: true }, providers: [{ provider: 'claude', status: 'ready' }, { provider: 'codex', status: 'ready' }, { provider: 'pi', status: 'ready' }] }),
   pair: async () => { paseoCalls.push('pair'); return { target: 'paseo', url: `https://app.paseo.sh/#offer=${paseoOffer}` }; },
 } };
 const paseo = createPaseoServer({ bridge: createPaseoBridge(async () => paseoPlugin), directory: path.join(root, 'rootfs/usr/local/share/pi-paseo-ha') });

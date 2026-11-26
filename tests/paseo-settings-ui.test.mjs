@@ -11,7 +11,7 @@ const ready = target => ({ installed: true, enabled: true, version: 'candidate',
   settings: { target }, activeTarget: target, configurationPending: false, targetSelectionAvailable: true, running: true, reachable: true, providers: [] });
 async function page(handler) {
   let clock = 0, nextTimer = 0;
-  const timers = new Map();
+  const timers = new Map(), listeners = new Map();
   const nodes = new Map();
   const node = id => {
     if (!nodes.has(id)) nodes.set(id, { value: id === 'target' ? 'paseo' : '', disabled: false, hidden: false,
@@ -21,13 +21,13 @@ async function page(handler) {
   const requests = [];
   vm.runInNewContext(source, { URL, URLSearchParams, AbortController, Date: { now: () => clock }, location: { search: '' }, confirm: () => true,
     setTimeout(fn, ms) { timers.set(++nextTimer, { fn, at: clock + ms }); return nextTimer; }, clearTimeout: id => timers.delete(id),
-    window: { addEventListener() {} },
+    window: { addEventListener(name, fn) { listeners.set(name, fn); } },
     document: { getElementById: node, querySelector: selector => ({ content: selector.includes('ingress') ? '/api/hassio_ingress/fixture01234567890123' : 'private-token' }), createElement: () => ({}) },
     fetch: async (url, init) => { const body = init.body ? JSON.parse(init.body) : null; requests.push(body);
       const data = await handler(body, init); return data?.httpError ? { ok: false, json: async () => ({ error: { code: data.httpError } }) } : { ok: true, json: async () => data }; },
   });
   await tick();
-  return { node, requests, async advance(ms) {
+  return { node, requests, async dispatch(name, event) { listeners.get(name)?.(event); await tick(); }, async advance(ms) {
     clock += ms;
     for (const [id, timer] of [...timers]) if (timer.at <= clock) { timers.delete(id); timer.fn(); }
     await tick();
@@ -201,4 +201,35 @@ test('a daemon PID alone does not enable pairing, and startup observation has a 
   await p.advance(120000); assert.match(p.node('notice').textContent, /尚未確認啟動完成/);
   assert.equal(p.requests.filter(body => body?.action === 'start').length, 1);
   const count = p.requests.length; await p.advance(3000); assert.equal(p.requests.length, count);
+});
+
+test('a newly started PID with a pending target is a transition, not a request to stop again', async () => {
+  let state = { ...ready('apporo'), phase: 'disabled', running: false, reachable: false, configurationPending: true };
+  const p = await page(body => body?.action === 'start' ? { ...state, startScheduled: true } : state);
+  await p.node('start').onclick();
+  state = { ...ready('apporo'), phase: 'starting', activeTarget: 'woowtech', reachable: false, configurationPending: true };
+  await p.advance(3000); assert.match(p.node('notice').textContent, /正在啟動/);
+  state = ready('apporo'); await p.advance(3000);
+  assert.equal(p.node('pair').disabled, false); assert.equal(p.requests.filter(Boolean).length, 1);
+});
+
+test('the clicked target is preserved when another page changes the Start response target', async () => {
+  const p = await page(body => body?.action === 'start'
+    ? { ...ready('apporo'), running: false, reachable: false, phase: 'starting', startScheduled: true }
+    : { ...ready('paseo'), running: false, reachable: false, phase: 'disabled' });
+  await p.node('start').onclick();
+  assert.deepEqual(p.requests.at(-1), { action: 'start', target: 'paseo' });
+  assert.match(p.node('notice').textContent, /其他操作已變更/);
+});
+
+test('returning from the page cache clears an abandoned request and reads status again', async () => {
+  let hold = false;
+  const p = await page((_body, init) => hold ? new Promise((_, reject) => {
+    init.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })), { once: true });
+  }) : ready('paseo'));
+  hold = true; const refresh = p.node('refresh').onclick();
+  await p.dispatch('pagehide', { persisted: true }); await refresh;
+  hold = false; await p.dispatch('pageshow', { persisted: true });
+  assert.equal(p.node('refresh').disabled, false); assert.equal(p.node('start').disabled, false);
+  assert.equal(p.node('pair').disabled, false);
 });

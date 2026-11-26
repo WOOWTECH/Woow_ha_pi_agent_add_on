@@ -38,7 +38,7 @@
     $('open').hidden = unavailable || dirty || pending || !serviceReady() || Boolean(startAttempt);
     $('open').href = targets[savedTarget].origin + '/';
     $('open').textContent = `開啟 ${targets[savedTarget].label} 對話介面`;
-    $('target-notice').textContent = dirty ? '尚未儲存標的，請先儲存再配對。'
+    $('target-notice').textContent = dirty ? '尚未儲存標的，請先儲存，再啟動服務或配對。'
       : pending ? pendingMessage()
       : state && !state.targetSelectionAvailable ? '目前套件支援 Paseo；更新 Agent Connect 套件後可切換標的。' : '';
   }
@@ -56,11 +56,10 @@
     if (startAttempt) pollTimer = setTimeout(() => { void request(undefined, {}, true); }, 3000);
   }
   function renderStatus(action, data) {
-    if (action === 'start' && !serviceReady()) startAttempt = { target: savedTarget, deadline: Date.now() + 120000 };
     if (startAttempt && savedTarget !== startAttempt.target) {
       startAttempt = null;
       $('notice').textContent = '其他操作已變更連線標的。請確認目前設定；本頁不會覆寫或重新啟動服務。';
-    } else if (state.configurationPending && state.running) {
+    } else if (state.configurationPending && state.running && !(startAttempt && ['installing', 'starting'].includes(state.phase))) {
       startAttempt = null; $('notice').textContent = pendingMessage();
     } else if (state.phase === 'restart_required') {
       startAttempt = null; $('notice').textContent = '服務需要重新啟動。請先按「停止服務」，確認停止後再按「啟動服務」。';
@@ -88,6 +87,9 @@
       $('notice').textContent = '尚未套用新的標的。' + pendingMessage(); return;
     }
     if (action === 'stop' || action === 'save') startAttempt = null;
+    // Bind progress to the clicked target, before awaiting the bridge. Another
+    // settings page can save a different target while lifecycle() is pending.
+    if (action === 'start') startAttempt = { target: savedTarget, deadline: Date.now() + 120000 };
     controller?.abort();
     const current = ++generation, abort = new AbortController(); controller = abort;
     const timeout = setTimeout(() => abort.abort(), action === 'stop' ? 120000 : 30000);
@@ -127,6 +129,7 @@
         ? '等待回應逾時，尚未確認操作結果。請重新整理狀態；本頁不會重送啟動或停止指令。'
         : error.message === 'UNTRUSTED_REQUEST' ? '設定頁已過期，請從 Home Assistant 重新開啟 Agent Connect。'
         : error.message === 'CONFIGURATION_PENDING' ? '操作未完成：連線標的已變更或尚未套用。請重新整理狀態，確認標的後停止再啟動服務。'
+        : ['STATE_BUSY', 'RUNTIME_BUSY', 'LOCK_BUSY'].includes(error.message) ? '另有服務操作正在處理。本次操作未完成，請稍候重新整理狀態後再試。'
         : '操作未完成：' + error.message + '。請重新整理狀態後再試。';
     } finally {
       clearTimeout(timeout);
@@ -138,6 +141,12 @@
   $('refresh').onclick = () => request(); $('start').onclick = () => request('start', { target: savedTarget });
   $('pair').onclick = () => request('pair', { target: savedTarget });
   $('stop').onclick = () => { if (confirm('停止 Agent Connect 服務？目前進行中的對話會中斷。')) return request('stop'); };
-  window.addEventListener('pagehide', () => { ++generation; startAttempt = null; clearTimeout(pollTimer); controller?.abort(); });
+  function leavePage() {
+    ++generation; startAttempt = null; clearTimeout(pollTimer);
+    controller?.abort(); controller = null; busy = false; busyAction = null;
+    state = null; clearPair(); updateControls();
+  }
+  window.addEventListener('pagehide', leavePage);
+  window.addEventListener('pageshow', event => { if (event.persisted) { leavePage(); void request(); } });
   updateControls(); void request();
 })();

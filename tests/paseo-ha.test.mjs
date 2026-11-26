@@ -179,6 +179,29 @@ test('start preserves a scheduled receipt and refuses pending or stale target re
   await assert.rejects(f.bridge.act({ action: 'start', target: 'apporo' }), { code: 'CONFIGURATION_PENDING' });
   await assert.rejects(f.bridge.act({ action: 'start', target: 'custom' }), { code: 'INVALID_TARGET' });
 });
+
+test('a second HA page cannot save or stop across an in-flight start; writes are not queued', async () => {
+  const f = fakePlugin();
+  let release, entered;
+  const reached = new Promise(resolve => { entered = resolve; });
+  f.api.lifecycle = async () => { entered(); await new Promise(resolve => { release = resolve; }); return { scheduled: true }; };
+  const starting = f.bridge.act({ action: 'start', target: 'paseo' }); await reached;
+  await assert.rejects(f.bridge.act({ action: 'save', target: 'apporo' }), { code: 'STATE_BUSY' });
+  await assert.rejects(f.bridge.act({ action: 'stop' }), { code: 'STATE_BUSY' });
+  assert.equal((await f.bridge.read()).selectedTarget, 'paseo');
+  release(); assert.equal((await starting).startScheduled, true);
+  assert.deepEqual(f.calls, []);
+  await f.bridge.act({ action: 'save', target: 'apporo' }); assert.deepEqual(f.calls, [{ target: 'apporo' }]);
+});
+
+test('a target changed by another entry point while enabling is not acknowledged as the requested start', async () => {
+  let target = 'paseo';
+  const f = fakePlugin({ status: () => modernStatus({ settings: { target } }) });
+  f.api.lifecycle = async () => { target = 'apporo'; return { scheduled: true }; };
+  await assert.rejects(f.bridge.act({ action: 'start', target: 'paseo' }), { code: 'CONFIGURATION_PENDING' });
+  // The failed action releases the bridge's write guard.
+  await f.bridge.act({ action: 'save', target: 'paseo' }); assert.deepEqual(f.calls, [{ target: 'paseo' }]);
+});
 test('pairing returns the official link of the saved target and refuses any other origin or the retired client path', async () => {
   for (const target of Object.keys(origins)) {
     const f = fakePlugin({ status: () => modernStatus({ settings: { target }, selectedTarget: target, activeTarget: target }), pair: async () => ({ target, url: officialLink(target) }) });
