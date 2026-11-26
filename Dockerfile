@@ -16,14 +16,15 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 COPY cli-runtime/versions.json /tmp/versions.json
 RUN set -euo pipefail; \
     semver='^[0-9]+[.][0-9]+[.][0-9]+$'; \
+    plugin_semver='^[0-9]+[.][0-9]+[.][0-9]+(-rc[.][0-9]+)?$'; \
     pin() { mkdir -p "$(dirname "/pins/$1")"; jq -er --arg re "$3" "$2 | strings | select(test(\$re))" /tmp/versions.json > "/pins/$1"; }; \
     pin claude/version .claude.version "${semver}"; \
     pin codex/version .codex.version "${semver}"; \
     pin omnigent/version .omnigent.version "${semver}"; \
-    pin omnigent-plugin/version .omnigentPlugin.version "${semver}"; \
-    pin omnigent-plugin/archive .omnigentPlugin.archive '^candidate-packages/woowtech-pi-omnigent-plugin-[0-9]+[.][0-9]+[.][0-9]+[.]tgz$'; \
+    pin omnigent-plugin/version .omnigentPlugin.version "${plugin_semver}"; \
+    pin omnigent-plugin/archive .omnigentPlugin.archive '^candidate-packages/woowtech-pi-omnigent-plugin-[0-9]+[.][0-9]+[.][0-9]+(-rc[.][0-9]+)?[.]tgz$'; \
     pin omnigent-plugin/sha256 .omnigentPlugin.sha256 '^[0-9a-f]{64}$'; \
-    pin agent-connect/version .agentConnect.version "${semver}"; \
+    pin agent-connect/version .agentConnect.version "${plugin_semver}"; \
     pin agent-connect/sha256 .agentConnect.sha256 '^[0-9a-f]{64}$'; \
     pin agent-connect/runtime-revision .agentConnect.runtimeRevision '^[0-9]+[.][0-9]+[.][0-9]+-r[0-9]+-[0-9a-f]{12}$'
 

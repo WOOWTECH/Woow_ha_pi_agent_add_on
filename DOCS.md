@@ -200,7 +200,16 @@ Logs from each retry show up in the addon Logs tab under the `video-tools-init` 
 
 本頁經由原有 Supervisor ingress 驗證與 nginx 來源限制，後端只監聽 `/data/pi-agent/omnigent-ha.sock`。不新增 LAN 連接埠。映像不包含 server 憑證或模型登入，不自動安裝或更新缺少的引擎。
 
-## Smart Tasks (Agent Connect 0.1.25)
+## Current coordinated candidate (unpublished)
+
+The isolated HA `0.15.28-rc.3` candidate pairs Agent Connect `0.1.27-rc.3`,
+Omnigent `0.3.42-rc.3`, and Paseo `0.17.5-r3-8664f2c3f8f5`. It retains the
+0.15.27 bridge's startup progress and saved-target pending behavior. Exact
+archive hashes and provenance are in `candidate-packages/manifest.json` and
+`cli-runtime/versions.json`. This candidate has not passed HA image or
+Supervisor upgrade gates and is not a published release.
+
+## Smart Tasks (Agent Connect 0.1.25; historical 0.15.26 behavior)
 
 The built-in Better Paseo 1.7.0 adds Tasks to the official Paseo 0.17.4 daemon. Tasks are on by default; chat enhancements and automatic update checks are off, and plugin self-update is managed by the add-on bundle. Restarting activates runtime `0.17.4-r2-a651f42711da`. Existing pairing and Paseo data, including server identity, conversations, settings and Tasks records, remain in place. No re-pairing or data reset is required. See [HA integration, Ingress and upgrade notes](docs/PASEO_HA.md#smart-tasks-01526).
 

@@ -256,6 +256,15 @@ The runtime is composed from the following packages (all bundled in the image):
 
 **Pinning rationale.** `@agegr/pi-web` is pinned (not `@latest`) because the upstream ships 100+ hardcoded `/api/*` routes and absolute-path assets that the nginx shim depends on. An upstream refactor of `_next` chunk names, RSC prefetch shape, or a new `/api/*` route can silently regress the shim without any local code change — and the failure mode is not an error, it is one panel of the UI quietly breaking. Bump manually, and run [`tests/shim-routes.mjs`](tests/shim-routes.mjs) with the new release's routes added before shipping.
 
+**Unpublished HA 0.15.28-rc.3 candidate.** The isolated source candidate pins
+Agent Connect 0.1.27-rc.3, Omnigent 0.3.42-rc.3, and Paseo 0.17.5 runtime
+`0.17.5-r3-8664f2c3f8f5`. It retains the 0.15.27 startup-progress and
+pending-target bridge behavior. Exact vendored archive hashes and provenance
+are in `candidate-packages/manifest.json` and `cli-runtime/versions.json`.
+This candidate is not a published add-on or image; version-changing Store
+comparison, Supervisor upgrade/startup, and both architecture image gates
+remain required.
+
 ### Container image
 
 Multi-arch images built by [`.github/workflows/build.yml`](.github/workflows/build.yml) and published to GHCR:
@@ -265,7 +274,7 @@ Multi-arch images built by [`.github/workflows/build.yml`](.github/workflows/bui
 
 Base: `ghcr.io/hassio-addons/debian-base:9.1.0`.
 
-The 0.15.26 source contains the exact checksum-pinned archives in
+The 0.15.26 stable release used the exact checksum-pinned archives in
 `candidate-packages/manifest.json`: `@woowtech/pi-paseo` 0.1.25,
 `@woowtech/pi-omnigent-plugin` 0.3.34 and
 `@woowtech/pi-agent-shared-runtime` 0.1.6. Both image architectures and the

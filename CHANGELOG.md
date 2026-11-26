@@ -1,3 +1,9 @@
+## 0.15.28-rc.3 — unpublished candidate
+
+- Pair Agent Connect 0.1.27-rc.3, Omnigent 0.3.42-rc.3 and the official Paseo 0.17.5 daemon with frozen runtime `0.17.5-r3-8664f2c3f8f5`. The exact peer-matched plugin archives and hashes are recorded in `candidate-packages/manifest.json` and `cli-runtime/versions.json`.
+- Retain the 0.15.27 bridge behavior: report startup progress, expose a saved target awaiting application, require explicit stop/start to change the running brand, and guard concurrent settings writes. Pairing identity and existing data directories are not reset by this candidate; the HA upgrade gate must verify the actual image transition.
+- This is an unpublished coordinated candidate. The version-changing PR must pass the Store upgrade comparison, mock-Supervisor startup/upgrade test, image checks on amd64 and aarch64, and final artifact review before publication.
+
 ## 0.15.27
 
 - 設定頁 JavaScript 尚未載入時停用控制項，避免 Ingress 載入延遲期間可按卻沒有事件處理。

@@ -46,6 +46,8 @@
 - **Watchdog。** Supervisor 探測 `/api/home`，卡死自動重啟。
 - **內建 Smart Tasks（0.15.26）。** Agent Connect 內建 Better Paseo 1.7.0，搭配官方 Paseo 0.17.4 daemon。Tasks 預設開啟；聊天增強與外掛自動更新檢查預設關閉，外掛自行更新入口停用。升級沿用原 Paseo 資料目錄，保留配對、主機身分、對話與 Tasks 設定和紀錄。
 
+> 未發布的 HA `0.15.28-rc.3` 配套候選版固定 Agent Connect `0.1.27-rc.3`、Omnigent `0.3.42-rc.3` 與 Paseo `0.17.5-r3-8664f2c3f8f5`；保留 `0.15.27` 的啟動進度及 pending-target bridge 修正。版本比較、Supervisor 升級與雙架構映像 gate 尚待完成。此候選版不是穩定發布。
+
 ## 快速上手
 
 **按「安裝」或「更新」前，先確認 HAOS 資料磁碟至少有 10 GB 可用空間。**

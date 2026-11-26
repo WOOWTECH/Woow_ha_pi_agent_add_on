@@ -14,6 +14,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const pins = JSON.parse(read('cli-runtime/versions.json'));
 const SEMVER = /^\d+\.\d+\.\d+$/;
+const PLUGIN_VERSION = /^\d+\.\d+\.\d+(?:-rc\.\d+)?$/;
 const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const mentions = (text, literal) => new RegExp(`(?<![\\w.])${escape(literal)}(?![\\w.])`).test(text);
 
@@ -23,7 +24,8 @@ const tar = (...args) => {
   return result.stdout;
 };
 test('versions.json pins exact versions and the hash-checked frozen plugin archives', () => {
-  for (const name of ['omnigentPlugin', 'agentConnect', 'omnigent', 'claude', 'codex']) assert.match(pins[name]?.version ?? '', SEMVER, `${name}.version`);
+  for (const name of ['omnigentPlugin', 'agentConnect']) assert.match(pins[name]?.version ?? '', PLUGIN_VERSION, `${name}.version`);
+  for (const name of ['omnigent', 'claude', 'codex']) assert.match(pins[name]?.version ?? '', SEMVER, `${name}.version`);
   const manifest = JSON.parse(read('candidate-packages/manifest.json')).artifacts;
   for (const [name, packageName] of [['omnigentPlugin', 'woowtech-pi-omnigent-plugin'], ['agentConnect', 'woowtech-pi-paseo']]) {
     const { version, archive, sha256, sourceCommit } = pins[name];
@@ -36,6 +38,26 @@ test('versions.json pins exact versions and the hash-checked frozen plugin archi
     assert.equal(candidate?.sourceCommit, sourceCommit, `${name}: manifest.json`);
   }
   assert.equal(manifest.find(row => row.file === path.basename(pins.agentConnect.archive)).runtimeRevision, pins.agentConnect.runtimeRevision, 'manifest.json');
+});
+
+test('coordinated plugin prereleases stay marked as unpublished candidates', () => {
+  assert.equal(pins.agentConnect.version, '0.1.27-rc.3');
+  assert.equal(pins.omnigentPlugin.version, '0.3.42-rc.3');
+  const manifest = JSON.parse(read('candidate-packages/manifest.json')).artifacts;
+  for (const pin of [pins.agentConnect, pins.omnigentPlugin]) {
+    const row = manifest.find(item => item.file === path.basename(pin.archive));
+    assert.match(row?.status ?? '', /unpublished.*candidate/i);
+    assert.equal(row?.releaseUrl, undefined, 'a candidate must not claim a published release URL');
+  }
+  assert.equal(pins.agentConnect.paseoVersion, '0.17.5');
+  assert.equal(pins.agentConnect.runtimeRevision, '0.17.5-r3-8664f2c3f8f5');
+});
+
+test('the pinned Omnigent archive contains the exact candidate package identity', () => {
+  const pin = pins.omnigentPlugin;
+  const pkg = JSON.parse(tar('-xzOf', path.join(root, pin.archive), 'package/package.json'));
+  assert.equal(pkg.name, '@woowtech/pi-omnigent-plugin');
+  assert.equal(pkg.version, pin.version);
 });
 
 test('the Agent Connect archive is the pinned release: no bundled web client, runtime revision derived from its lockfile', () => {
@@ -83,6 +105,10 @@ test('the Dockerfile, CI and image checks read the pins instead of repeating the
     for (const literal of literals) assert.equal(mentions(text, literal), false, `${file} repeats ${literal}; read cli-runtime/versions.json`);
   }
   const dockerfile = read('Dockerfile');
+  assert.ok(dockerfile.includes("plugin_semver='^[0-9]+[.][0-9]+[.][0-9]+(-rc[.][0-9]+)?$'"),
+    'plugin pins accept an explicit rc.N prerelease while CLI pins remain stable-only');
+  assert.ok(dockerfile.includes("^candidate-packages/woowtech-pi-omnigent-plugin-[0-9]+[.][0-9]+[.][0-9]+(-rc[.][0-9]+)?[.]tgz$"),
+    'the checksum-pinned candidate archive filename accepts the exact rc.N suffix');
   assert.match(dockerfile, /^COPY cli-runtime\/versions\.json \/tmp\/versions\.json$/m, 'the pins stage reads versions.json');
   assert.match(dockerfile, /^COPY cli-runtime\/versions\.json \/usr\/local\/share\/woow-ha-pi-agent\/versions\.json$/m,
     'the image smoke reads the pins the image was built from');

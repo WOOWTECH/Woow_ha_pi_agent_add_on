@@ -1,21 +1,21 @@
-# Agent Connect release candidate — 2026-11-21
+# Agent Connect HA packaging candidate — 2026-11-26 (0.15.28-rc.3)
 
-This document records coordinated source preparation and HA packaging; HA
-deployment remains pending. Updated 2026-11-26 for HA Pi Agent 0.15.26:
-Agent Connect 0.1.25 has been published as a verified GitHub release asset;
-the shared-runtime and Omnigent rows remain unpublished candidates. The pins
-are written once in `cli-runtime/versions.json`; this table is the readable
-record. SHA-256 values identify the actual vendored bytes. Native pins use
-local `file://` inputs; HA uses verified `COPY` inputs.
+This document records an unpublished, isolated HA companion candidate based
+on the published 0.15.27 bridge fix. It pairs Agent Connect 0.1.27-rc.3,
+Omnigent 0.3.42-rc.3, and Paseo 0.17.5 runtime
+`0.17.5-r3-8664f2c3f8f5`. Required Store comparison, mock-Supervisor upgrade
+and startup checks, both architecture image gates, and release review remain
+outstanding. The pins are written once in `cli-runtime/versions.json`; this
+table records the exact vendored bytes.
 
 | Input | Candidate version | SHA-256 |
 | --- | --- | --- |
 | `@woowtech/pi-agent-shared-runtime` | 0.1.6 | `0914069fb0cf83f258cf81034bb16573f6e4242e8779cea47b4a5e841f98a937` |
-| `@woowtech/pi-paseo` (Agent Connect) | 0.1.25 | `9717988c00a4c830a3fa458ab1ae778515c90257faaac0e68e695fefbf7cd8d1` |
-| `@woowtech/pi-omnigent-plugin` | 0.3.34 | `e9e80783881f8a036cbf922d2f50fad860dac3bd23e170dda768ab3c56107945` |
+| `@woowtech/pi-paseo` (Agent Connect) | 0.1.27-rc.3 | `ee3a2f8b35bb42f87b85d4811362d134dcbcb9ae8e8845af69cc6d75d27248f4` |
+| `@woowtech/pi-omnigent-plugin` | 0.3.42-rc.3 | `fe9eb04b44da3e509723889de77c00d1da44daff44c81b5cba6df43b117ab80e` |
 
 HA retains official Pi Web 0.12.0 with its independent Ingress bridge. Its
-Omnigent plugin retains the frozen 0.3.34 archive used by the earlier native candidate. HA does not
+Omnigent plugin is pinned to the coordinated 0.3.42-rc.3 archive. HA does not
 apply its 0.10 combined adapter; the official 0.12 bridge remains in use. The Agent Connect GUI supports older user-selected
 Paseo plugins by disabling the new selector while retaining Paseo pairing.
 
@@ -74,10 +74,10 @@ artifact workflow requires the same group before packaging. Replacement-archive
 full Mac and HA image CI must pass on this draft head; previous Shared015 green
 runs are preserved as historical evidence only.
 
-Actual macOS, Ubuntu, Windows/WSL2 and HA Supervisor/provider acceptance remain
-pending. The HA add-on candidate is 0.15.26 and requires the version-changing
-Supervisor upgrade gate. Earlier no-version-change comparisons did not exercise it. The current HA connector's
-`/addons` call returned `Unknown command`, so installed-addon access is unconfirmed.
+Earlier macOS, Ubuntu, Windows/WSL2 and HA Supervisor/provider acceptance notes
+below are historical evidence. The current HA companion candidate is
+0.15.28-rc.3 and requires the version-changing Store comparison and
+mock-Supervisor upgrade gate; no host was accessed for this preparation.
 
 Agent Connect now uses persistent SQLite guards on macOS; Linux retains flock.
 Actual Apple Silicon (Node 22.23.4) and Intel (Node 22.19.0) CI passed OS-lock,

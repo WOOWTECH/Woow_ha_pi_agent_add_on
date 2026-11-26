@@ -8,18 +8,17 @@
       "sourceCommit": "e51849dfa340a2f91bcc7041092749d1b4859c70"
     },
     {
-      "file": "woowtech-pi-paseo-0.1.25.tgz",
-      "sha256": "9717988c00a4c830a3fa458ab1ae778515c90257faaac0e68e695fefbf7cd8d1",
-      "status": "verified GitHub release asset",
-      "releaseUrl": "https://github.com/WOOWTECH/pi-paseo-plugin/releases/download/v0.1.25/woowtech-pi-paseo-0.1.25.tgz",
-      "sourceCommit": "43cc7b0623c47afdbad6e35e0df7bd03dd5c72d3",
-      "runtimeRevision": "0.17.4-r2-a651f42711da"
+      "file": "woowtech-pi-paseo-0.1.27-rc.3.tgz",
+      "sha256": "ee3a2f8b35bb42f87b85d4811362d134dcbcb9ae8e8845af69cc6d75d27248f4",
+      "status": "unpublished coordinated candidate; exact peer-matched payload; not a release asset",
+      "sourceCommit": "88857bd86a4bf982aef6d85122f16b7d4a03d009",
+      "runtimeRevision": "0.17.5-r3-8664f2c3f8f5"
     },
     {
-      "file": "woowtech-pi-omnigent-plugin-0.3.34.tgz",
-      "sha256": "e9e80783881f8a036cbf922d2f50fad860dac3bd23e170dda768ab3c56107945",
-      "status": "unpublished candidate; not a registry/release asset",
-      "sourceCommit": "d8652e971bdf66133d699052ab9003d39ff69159"
+      "file": "woowtech-pi-omnigent-plugin-0.3.42-rc.3.tgz",
+      "sha256": "fe9eb04b44da3e509723889de77c00d1da44daff44c81b5cba6df43b117ab80e",
+      "status": "unpublished coordinated candidate; paired with Agent Connect 0.1.27-rc.3",
+      "sourceCommit": "828d136eca97f9f985250b14be3e43715ec2bf4d"
     }
   ]
 }
