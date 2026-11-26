@@ -294,7 +294,7 @@ test('private bridge protects the API, hands out the official pairing link and l
   const page = await fetch(base + '/paseo/setup', { headers: { 'X-Ingress-Path': prefix } });
   const html = await page.text();
   assert.ok(html.includes(prefix + '/paseo/app.js'));
-  assert.match(html, /<a id="open" href="https:\/\/app\.paseo\.sh\/" target="_blank" rel="noopener noreferrer">/);
+  assert.match(html, /<a id="open" hidden href="https:\/\/app\.paseo\.sh\/" target="_blank" rel="noopener noreferrer">/);
   assert.match(html, /<a id="pair-link" hidden target="_blank" rel="noopener noreferrer">/);
   assert.ok(!html.includes('paseo-web'), 'the page links no local web client');
   assert.match(page.headers.get('content-security-policy'), /default-src 'none'.*frame-ancestors 'self'/);

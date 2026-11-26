@@ -179,8 +179,8 @@ try {
     };
     await select('paseo');
     const paseoFrame = page.frameLocator('iframe[title="Agent Connect"]');
-    // The embedded pages show enabled controls until app.js starts its first status read; on a real
-    // HAOS (Ingress latency) `:enabled` matched while the page still said 讀取中…. Wait for the read.
+    // Controls remain disabled while the script loads and reads initial state.
+    // Wait for confirmed readiness before attempting pairing.
     await paseoFrame.locator('#notice').filter({ hasNotText: '讀取中' }).waitFor();
     await paseoFrame.locator('#pair:enabled').waitFor();
     assert.deepEqual(await paseoFrame.locator('#target option').evaluateAll(nodes => nodes.map(node => node.value)), ['paseo', 'woowtech', 'apporo']);

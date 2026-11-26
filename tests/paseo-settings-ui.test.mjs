@@ -96,7 +96,7 @@ test('a package that cannot switch targets still pairs Paseo on the official sit
 });
 test('the page links only official sites: the static page and script name no local web client and open in a new tab', () => {
   const html = read('index.html');
-  assert.match(html, /<a id="open" href="https:\/\/app\.paseo\.sh\/" target="_blank" rel="noopener noreferrer">/);
+  assert.match(html, /<a id="open" hidden href="https:\/\/app\.paseo\.sh\/" target="_blank" rel="noopener noreferrer">/);
   assert.match(html, /<a id="pair-link" hidden target="_blank" rel="noopener noreferrer">/);
   assert.match(html, /<option value="paseo">Paseo<\/option>/);
   for (const [name, text] of [['index.html', html], ['app.js', source]]) {

@@ -1,5 +1,7 @@
 ## 0.15.27
 
+- 設定頁 JavaScript 尚未載入時停用控制項，避免 Ingress 載入延遲期間可按卻沒有事件處理。
+
 - Agent Connect immediately shows start/stop progress and follows asynchronous startup until the daemon responds. Paseo, Woowtech Smart and Apporo Smart no longer require a manual refresh to reveal a completed start.
 - Show the running brand separately from a saved target awaiting application. Starting with an unapplied target gives explicit stop/start instructions; it never silently restarts existing conversations. Unsaved selections cannot start the previously saved brand.
 - Bound settings requests and startup observation, explain expired pages and unknown timeout outcomes, and let Stop interrupt a slow background status read. No lifecycle command is automatically retried.

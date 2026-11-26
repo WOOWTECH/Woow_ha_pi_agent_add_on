@@ -57,7 +57,17 @@ try {
     });
     const page = await context.newPage();
     const errors = []; page.on('pageerror', error => errors.push(error.message));
-    await page.goto(`${base}/paseo/setup`);
+    // A slow Ingress asset must not expose buttons before their handlers exist.
+    let releaseScript;
+    const scriptGate = new Promise(resolve => { releaseScript = resolve; });
+    await page.route('**/paseo/app.js', async route => { await scriptGate; await route.continue(); });
+    await page.goto(`${base}/paseo/setup`, { waitUntil: 'commit' });
+    try {
+      await page.locator('#start').waitFor();
+      for (const id of ['start', 'stop', 'refresh', 'target']) assert.equal(await page.locator('#' + id).isDisabled(), true, `${id}: no action before the script loads`);
+      assert.equal(await page.locator('#open').isHidden(), true);
+    } finally { releaseScript(); }
+    await page.waitForLoadState('domcontentloaded');
     await page.locator('#notice').filter({ hasNotText: '讀取中' }).waitFor();
     await page.locator('#pair:enabled').waitFor();
     assert.deepEqual(await page.locator('#target option').evaluateAll(nodes => nodes.map(node => node.value)), ['paseo', 'woowtech', 'apporo']);
