@@ -79,16 +79,32 @@ settings-navigation sources, update the compatibility hashes/anchors and all
 asset references, and rerun the red/green browser test before changing the pin.
 
 The network-disabled image gate also calls `paseo-native-runtime.mjs` from
-`paseo-image-smoke.mjs`. It verifies the r3 receipt and both exact patched PID
-modules, rejects a competing flock, and exercises acquire/update/refresh/release
+`paseo-image-smoke.mjs`. It verifies the pinned runtime receipt, both CLI/server versions and both exact
+patched PID modules, rejects a competing flock, and exercises acquire/update/refresh/release
 in each compiled module copy. It checks PID inode preservation on update,
-generation-aware release and the persistent guard inode. All writes use a
+generation-aware release, previous-boot PID recovery and the persistent guard
+inode. A controlled process-birth fixture exercises the frozen plugin's proof-based
+stale recovery, refuses missing proof and a live incarnation, and checks retained
+server-ID, daemon-key and config bytes. It does not force kernel PID reuse. All writes use a
 temporary private home; no daemon, provider, pairing or model call is started
 by this native writer probe. The surrounding smoke checks settings-only
 registration (no conversation is created), removal, the CLI version, that the
 image holds no bundled web client and that the plugin's status has none, and
 that agent collaboration is off. It reads the expected Agent Connect and Paseo
 versions from the image's `versions.json`.
+
+`tests/paseo-runtime-dir.test.mjs` is part of the required Node CI job. It covers
+fresh HOME, obsolete/incomplete saved releases, ready saved releases, explicit
+plugin versions and fallback when neither runtime is ready or discovery fails.
+The launcher tests cover explicit `PI_PASEO_RUNTIME_DIR` overrides; the frozen
+contract asks the actual plugin, and the image smoke compares an old saved
+release with the image's actual ready runtime. Selection must leave saved
+runtime contents and daemon identity unchanged.
+
+On hosts where mutation testing is prohibited, run the launcher suite with
+`node --test --test-skip-pattern='a launcher that cannot link' tests/paseo-launch.test.mjs`.
+This excludes the deliberate broken-import mutation; the actual launcher,
+shutdown, override and named-import checks still run. Full CI retains that test.
 
 ## Version pins and the released Omnigent plugin
 

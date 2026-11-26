@@ -265,7 +265,7 @@ Multi-arch images built by [`.github/workflows/build.yml`](.github/workflows/bui
 Base: `ghcr.io/hassio-addons/debian-base:9.1.0`.
 
 The 0.15.25 source contains the exact checksum-pinned archives in
-`candidate-packages/manifest.json`: `@woowtech/pi-paseo` 0.1.23,
+`candidate-packages/manifest.json`: `@woowtech/pi-paseo` 0.1.24,
 `@woowtech/pi-omnigent-plugin` 0.3.34 and
 `@woowtech/pi-agent-shared-runtime` 0.1.6. Both image architectures and the
 Store local-source build consume these files directly. No npm publication or
@@ -412,8 +412,10 @@ Bundled upstream packages retain their own licenses (`@agegr/pi-web` MIT, `@eare
 
 ## Agent Connect (Paseo, Woowtech Smart, Apporo Smart)
 
-See [HA integration, Ingress and upgrade notes](docs/PASEO_HA.md). The image bundles Agent Connect 0.1.23 and Omnigent 0.3.34, keeps Agent Connect beside Omnigent in Settings and retains Pi Web 0.12.0. Both bindings remain in Settings and create no setup conversation at startup.
+See [HA integration, Ingress and upgrade notes](docs/PASEO_HA.md). The image bundles Agent Connect 0.1.24 (Paseo daemon 0.17.4) and Omnigent 0.3.34, keeps Agent Connect beside Omnigent in Settings and retains Pi Web 0.12.0. Both bindings remain in Settings and create no setup conversation at startup.
 
 **The Paseo option now opens the official Paseo app at https://app.paseo.sh/ in a new tab**, the same way the Woowtech Smart and Apporo Smart options open their own sites. The add-on no longer bundles or serves a copy of the Paseo web app (`/paseo-web`), and the settings page accepts only a pairing link of the exact form `https://app.paseo.sh/#offer=<base64url>` for Paseo (or the selected Smart site's own origin with the same form); anything else is refused.
 
-After updating from 0.15.24 or earlier, restart the add-on (Supervisor does so when it applies the update). A browser that was paired through the old `/paseo-web` page has to pair once more on app.paseo.sh: open **Settings → Agent Connect**, press the pair button and open the link. The host identity, provider logins, conversations and settings are unchanged; old `/paseo-web` tabs and bookmarks no longer work. Agent Connect's "allow agents to collaborate" switch (0.1.22, off by default) is not part of this settings page, which never changes it.
+After updating from 0.15.24 or earlier, restart the add-on (Supervisor does so when it applies the update). A browser that was paired through the old `/paseo-web` page has to pair once more on app.paseo.sh: open **Settings → Agent Connect**, press the pair button and open the link. The host identity, provider logins and conversations are retained; old `/paseo-web` tabs and bookmarks no longer work. Agent Connect's "allow agents to collaborate" switch (0.1.22, off by default) is not part of this settings page, which never changes it.
+
+The image preinstalls runtime `0.17.4-r1-a651f42711da`. An older runtime saved in HOME no longer hides a ready image runtime and causes an avoidable ~0.7 GB reinstall. A saved runtime that serves the registered plugin remains preferred; an explicit `PI_PASEO_RUNTIME_DIR` is always honored. No saved runtime or daemon identity is moved or deleted by this selection. Paseo migrates some speech settings and agent records on use; rollback has limits. See the [upgrade notes](docs/PASEO_HA.md#upgrade-and-lifecycle) for restart behavior, new defaults and Smart compatibility.

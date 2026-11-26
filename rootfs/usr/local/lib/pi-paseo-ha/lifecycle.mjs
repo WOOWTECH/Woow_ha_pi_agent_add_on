@@ -50,8 +50,9 @@ export function seed({ agentDir = process.env.PI_CODING_AGENT_DIR, home = proces
   return { seeded };
 }
 
-/** Use the host SDK 1.1 from Pi Web 0.12, never the plugin's 0.10 overlay. */
-export async function loadPlugin({ env = process.env, bundle = BUNDLE } = {}) {
+/** The configured Agent Connect package, found without loading any of its code: where it is installed, whether
+ * its binding is enabled and its version. Uses the host SDK 1.1 from Pi Web 0.12, never the plugin's 0.10 overlay. */
+export async function findPlugin({ env = process.env, bundle = BUNDLE } = {}) {
   const sdk = await import(pathToFileURL(path.join(bundle, 'node_modules/@earendil-works/pi-coding-agent/dist/index.js')).href);
   const settings = sdk.SettingsManager.create(env.HOME, env.PI_CODING_AGENT_DIR, { projectTrusted: false });
   const manager = new sdk.DefaultPackageManager({ cwd: env.HOME, agentDir: env.PI_CODING_AGENT_DIR, settingsManager: settings });
@@ -65,10 +66,17 @@ export async function loadPlugin({ env = process.env, bundle = BUNDLE } = {}) {
     const scopes = { user: settings.getGlobalSettings(), project: settings.getProjectSettings() };
     const binding = (scopes[entry.scope]?.packages || []).find(item => (typeof item === 'string' ? item : item.source) === entry.source);
     const enabled = typeof binding === 'string' || !!binding && (!Array.isArray(binding.extensions) || binding.extensions.length > 0);
-    const api = await import(pathToFileURL(path.join(root, 'src/host-api.mjs')).href);
-    return { root, api, enabled, version: pkg.version };
+    return { root, enabled, version: pkg.version };
   }
   return null;
+}
+
+/** The configured package with its host API, for the bridge and the lifecycle. */
+export async function loadPlugin(options) {
+  const found = await findPlugin(options);
+  if (!found) return null;
+  const api = await import(pathToFileURL(path.join(found.root, 'src/host-api.mjs')).href);
+  return { root: found.root, api, enabled: found.enabled, version: found.version };
 }
 
 /** Watch registration independently of a running model turn. Disabled/removal

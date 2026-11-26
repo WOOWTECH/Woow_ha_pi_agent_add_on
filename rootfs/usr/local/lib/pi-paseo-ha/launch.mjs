@@ -1,13 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { seed, startLifecycle } from './lifecycle.mjs';
+import { seed, startLifecycle, findPlugin, BUNDLE } from './lifecycle.mjs';
+import { chooseRuntimeDir } from './runtime-dir.mjs';
 import { createServer } from './server.mjs';
 import { superviseChild } from '../pi-launch/child-shutdown.mjs';
 
 const socket = path.join(process.env.PI_CODING_AGENT_DIR, 'paseo-ha.sock');
-const savedRuntime = path.join(process.env.HOME, '.local/share/pi-paseo/runtime');
-process.env.PI_PASEO_RUNTIME_DIR ||= fs.existsSync(savedRuntime) ? savedRuntime : '/opt/woow/paseo-runtime';
+// A runtime the operator names is used as given. Otherwise the one saved in the home directory while it can
+// serve the registered plugin, else the one in the image (runtime-dir.mjs).
+process.env.PI_PASEO_RUNTIME_DIR ||= await chooseRuntimeDir({ home: process.env.HOME, pluginRoot: async () => (await findPlugin())?.root ?? BUNDLE });
 let stop, closing = false;
 // Registration and the lifecycle restore are separate steps: a failed seed (unreadable
 // settings, an unwritable marker) must never keep an already registered plugin from

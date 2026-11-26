@@ -14,7 +14,8 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { seed, loadPlugin } from '../rootfs/usr/local/lib/pi-paseo-ha/lifecycle.mjs';
+import { seed, loadPlugin, findPlugin } from '../rootfs/usr/local/lib/pi-paseo-ha/lifecycle.mjs';
+import { chooseRuntimeDir } from '../rootfs/usr/local/lib/pi-paseo-ha/runtime-dir.mjs';
 import { createPaseoBridge } from '../rootfs/usr/local/lib/pi-paseo-ha/bridge.mjs';
 import { connectionTargets, pairUrl } from '../rootfs/usr/local/lib/pi-paseo-ha/ingress.mjs';
 
@@ -120,5 +121,45 @@ test('the pairing links the plugin builds for each target are exactly what the b
       const old = createPaseoBridge(async () => ({ ...plugin, api: { ...plugin.api, pair: async () => ({ url: retired, target: id }) } }));
       await assert.rejects(old.act({ action: 'pair' }), { code: 'PAIRING_ORIGIN_INVALID' });
     }
+  }
+});
+
+test('the launcher asks the registered plugin which runtime serves it; to the real plugin the releases of earlier versions are no runtime', async t => {
+  const f = installation(t);
+  const plugin = await start(f);
+  assert.deepEqual(await findPlugin({ env: f.env, bundle: f.bundle }), { root: plugin.root, enabled: true, version: pins.version },
+    'the lookup the launcher makes finds what the lifecycle and the bridge load');
+  const layout = await import(pathToFileURL(path.join(plugin.root, 'src/runtime-layout.mjs')).href);
+  assert.equal(layout.RUNTIME_REVISION, pins.runtimeRevision);
+  assert.equal(typeof layout.runtimeReady, 'function');
+  // What an earlier add-on version can have left in a runtime saved in the home: only its own releases, or the layout of the first plugin versions.
+  const saved = path.join(f.home, '.local/share/pi-paseo/runtime');
+  for (const revision of layout.PRIOR_RUNTIME_REVISIONS) fs.mkdirSync(path.join(saved, 'releases', revision), { recursive: true });
+  fs.mkdirSync(path.join(saved, 'node_modules/@getpaseo/cli'), { recursive: true });
+  assert.equal(layout.runtimeReady({ runtimeDir: saved }), false, 'the plugin would install its release there: npm ci, about 0.7 GB');
+  assert.equal(layout.runtimeReady({ runtimeDir: f.env.PI_PASEO_RUNTIME_DIR }), false, 'this fixture installs no runtime (the image smoke has the real one)');
+  assert.equal(await chooseRuntimeDir({ home: f.home, bundled: f.env.PI_PASEO_RUNTIME_DIR, pluginRoot: async () => plugin.root }), saved,
+    'with no ready runtime anywhere, what the plugin installs stays in the saved runtime, where it persists');
+  fs.rmSync(saved, { recursive: true });
+  assert.equal(await chooseRuntimeDir({ home: f.home, bundled: f.env.PI_PASEO_RUNTIME_DIR, pluginRoot: async () => plugin.root }), f.env.PI_PASEO_RUNTIME_DIR, 'a fresh home: the runtime in the image');
+});
+
+test('Smart targets refuse protected-only pairing offers while Paseo retains the client security choice', async t => {
+  const f = installation(t);
+  const plugin = await start(f);
+  const { CONNECTION_TARGETS, targetConfiguration, targetPairUrl } = await import(pathToFileURL(path.join(plugin.root, 'src/connection-targets.mjs')).href);
+  for (const { id, appUrl, relayEndpoint } of CONNECTION_TARGETS) {
+    const config = { daemon: { relay: { requireProtectedSecurity: true } } };
+    const selected = targetConfiguration(config, id);
+    assert.equal(selected.daemon.relay.requireProtectedSecurity, id === 'paseo');
+    assert.equal(config.daemon.relay.requireProtectedSecurity, true, 'the input config is not mutated');
+    const offer = Buffer.from(JSON.stringify({ v: 2, serverId: 'fixture-server', daemonPublicKeyB64: 'fixture-key',
+      relay: { endpoint: relayEndpoint, useTls: true }, minimumSecurityMode: 'protected' })).toString('base64url');
+    const url = `${appUrl}/#offer=${offer}`;
+    f.preferences({ target: id });
+    const bridge = createPaseoBridge(async () => ({ ...plugin, api: { ...plugin.api,
+      pair: async () => ({ url: targetPairUrl(url, id), target: id }) } }));
+    if (id === 'paseo') assert.deepEqual(await bridge.act({ action: 'pair' }), { url, target: id });
+    else await assert.rejects(bridge.act({ action: 'pair' }), { code: 'PAIRING_SECURITY_UNSUPPORTED' });
   }
 });

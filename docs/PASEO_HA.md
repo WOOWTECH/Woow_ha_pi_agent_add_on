@@ -59,9 +59,16 @@ The image builds the daemon dependencies for amd64 and aarch64. It downloads
 and bundles no web client. Earlier versions baked one into
 `/opt/woow/paseo-web` and copied it to `/data/pi-agent/pi-paseo/web-client/` at
 start; the plugin now deletes that old copy when its service next starts (only
-the entries those versions created), which gives the space back. Existing
-user runtime paths are preferred; otherwise the bundled runtime in
-`/opt/woow/paseo-runtime` is used. Provider login, live relay access and
+the entries those versions created), which gives the space back. The launcher honors an explicit `PI_PASEO_RUNTIME_DIR` unchanged. Otherwise it
+asks the registered plugin's `runtimeReady` about the saved
+`$HOME/.local/share/pi-paseo/runtime` and the image's `/opt/woow/paseo-runtime`.
+A ready saved runtime wins. If only the image runtime is ready, it wins, so an
+old or incomplete saved install does not trigger an avoidable ~0.7 GB `npm ci`
+at first boot. If neither is ready or the plugin cannot be checked, the saved
+path stays selected for compatibility and persistent installation. With no
+saved path, the image path is used. Selection never edits either directory or
+the daemon home, and uses the registered plugin's revision, including a custom
+plugin override, rather than assuming the image's version. Provider login, live relay access and
 conversations still require network.
 
 ## Ingress and authentication
@@ -98,44 +105,79 @@ session-specific: reopen from HA after it expires.
 
 ## Upgrade and lifecycle
 
-**From 0.15.24 to 0.15.25 (Agent Connect 0.1.23).** The Paseo option now opens
+**From 0.15.24 to 0.15.25 (Agent Connect 0.1.24, Paseo 0.17.4).** The Paseo option now opens
 the official site https://app.paseo.sh/ in a new tab instead of the bundled
 `/paseo-web`. Restart the add-on after the update so the new settings page,
 nginx configuration and plugin run together (Supervisor restarts it when it
 applies the update itself); a settings tab or `/paseo-web` page left open from
 the old version stops working. A browser that was paired through `/paseo-web`
 must pair once more on app.paseo.sh: open Settings → Agent Connect, generate a
-link and open it. The host identity, provider logins, conversations and plugin
-settings are unchanged.
+link and open it. The same `/data/pi-agent/pi-paseo/daemon` home retains its
+server ID, daemon keys, provider logins and conversations. Some Paseo settings
+and agent records migrate as described below.
 
-No options, ports, architectures, image name or existing data formats change.
-Credentials, settings and sessions are preserved. First install registers the
+No HA options, ports, architectures or image name change. First install registers the
 bundled plugin once; it does not create or open an onboarding conversation. The plugin supervisor prepares the service independently. Pairing requires a button press in Settings → Agent Connect.
 A marker prevents reinstallation after removal; pre-existing package overrides
 and explicit disabling are retained. Package enable/disable/removal is observed
 without restarting Pi Web. A manual service pause survives container restart;
 shutdown stops the owned supervisor without persisting a user pause.
 
-Paseo 0.1.15 uses the r3 runtime with verified patches in both native 0.11.2
-PID-lock modules. All supported writers and recovery share one persistent
-Linux flock guard. Automatic recovery requires a private proof bound to the
-installation, home, lock inode and Linux process birth; a PID or process name
-alone cannot authorize it. The existing util-linux runtime dependency provides
-flock. The offline image test exercises both patched writers and competing
-flock exclusion in a disposable home without launching a daemon or provider.
+The bundled runtime is `0.17.4-r1-a651f42711da`. If a daemon from a verified
+older release is still running, the plugin leaves it serving and reports
+`RESTART_REQUIRED`; status, pairing, reload and stop use that daemon's own
+release. Stop and start in Settings to switch versions. An add-on update
+normally restarts the container, so the old process has already ended. The
+image contains only the new release; it cannot control a live old daemon if
+its matching runtime is unavailable (`DAEMON_RELEASE_UNAVAILABLE`). Do not
+copy modules across versions to work around that check.
 
-When a trusted r2 runtime remains available, status and normal owned stop
-continue to work before r3 is installed. A healthy r2 daemon with r3 prepared
-returns `RESTART_REQUIRED`; use the normal stop/start lifecycle. It does not
-mint an r3 proof for the old daemon. A legacy record whose PID appears live
-but cannot be tied to its original process remains rejected without trusted
-proof and needs ownership diagnosis. Recovery does not delete that record
-or signal the foreign process. Native 0.11.2 dead-process and cross-boot checks
-remain in place. The image
-bundles r4 only; it does not copy previous images' runtime directories.
-The r4 candidate adds selected-target brand identity. An old running runtime
-requires explicit stop/start. On non-Linux hosts the recorded PID, startedAt
-and runtime revision must match; new starts record their revision automatically.
+Both native PID writers use the same persistent Linux flock guard. Automatic
+stale-process recovery requires a private proof bound to the installation,
+home, PID-file inode and Linux process birth; a PID/name alone is insufficient.
+The image already includes util-linux `flock` and procps `ps`. The latter is
+required for the new terminal-worker cleanup. Do not remove the guard file.
+The image smoke verifies both pinned CLI/server versions and writer copies,
+cross-boot recovery, and a controlled birth-proof recovery that retains fixture
+identity files. It does not simulate a real Supervisor restart or kernel PID reuse.
+
+The plugin's normal stop can wait up to 45 seconds for the daemon supervisor,
+then terminal cleanup; its own supervisor budget is 81 seconds. HA's launcher
+still exits within 5 seconds on container shutdown, leaving remaining processes
+to s6's final cleanup. Actual stop/start and stale-state recovery across the
+container boundary still require image/Supervisor acceptance.
+
+Before the first new-version start, the plugin reads config through Paseo
+0.17.4's own migration: legacy OpenAI speech credentials move from
+`providers.openai` into the selected speech/dictation provider; omitted speech
+providers become `local`, and unused local fields are removed. Invalid JSON
+reports `CONFIG_CORRUPT`; unsupported settings report `CONFIG_INCOMPATIBLE`.
+If an old daemon is still serving, fix those settings before stopping it. Agent
+records migrate `config.featureValues` into `config.providerOptions` and
+`features` to `controls` when rewritten.
+
+Rollback requires stop/start too. Older Paseo may reject the migrated OpenAI
+speech credentials or other new config fields with `CONFIG_INVALID`; move the
+credentials back to `providers.openai` and remove unsupported fields before
+starting the old version. Agent options rewritten by 0.17.4 need reselection
+in 0.11.2. Runtime selection leaves the saved directories intact; the plugin
+only prunes eligible releases in the selected directory after a healthy start,
+retaining the newest older release and any releases still in use.
+
+Two upstream defaults affect operation: `agents.idleRuntimeCleanup` closes idle
+agent processes after 60 minutes (records remain; the next message reopens
+them), and `daemon.usage.enabled` allows client-requested provider usage queries
+using existing credentials. Set either to `false` in daemon config and reload
+to opt out; these switches are not exposed by HA's settings bridge.
+
+The Smart clients need the older relay encryption. Agent Connect sets
+`daemon.relay.requireProtectedSecurity=false` for either Smart target on every
+start and refuses a pairing offer requiring protected security
+(`PAIRING_SECURITY_UNSUPPORTED`). Stop/start after changing that setting while
+running. The Paseo target retains the client's security choice. HA's bridge
+reports action failures generically; use the plugin CLI diagnostics for the
+specific code. Smart mobile push remains unsupported, and real Smart app
+compatibility with this daemon still needs acceptance.
 
 New users still need to authorize the provider CLIs through their official
 login flows. This integration does not migrate or create provider credentials.
@@ -186,8 +228,8 @@ registry manifests and Store/local-build synchronization. Live Supervisor and
 real-account model acceptance remain separate; this fanout does not operate live
 HA, VMs or Pi4.
 
-The runtime in `/opt/woow/paseo-runtime` is two image layers, so that neither can
-reach the 256 MiB limit that `tests/assert-image-layer-sizes.mjs` applies to new
+The runtime in `/opt/woow/paseo-runtime` is two image layers, to keep each below
+the 256 MiB limit that `tests/assert-image-layer-sizes.mjs` applies to new
 layers on pushes to `main` (after the merge, never on a PR): the Claude Agent
 SDK's platform binary under `node_modules/@anthropic-ai`, most of the runtime and
 growing with the SDK, is layer b; everything else is layer a. Measured on

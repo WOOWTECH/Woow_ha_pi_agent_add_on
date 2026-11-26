@@ -28,6 +28,18 @@ try {
   const sdkScope = path.join(layout.runtimeDirectory(locations()), 'node_modules/@anthropic-ai');
   assert.equal(fs.existsSync(path.join(sdkScope, `claude-agent-sdk-linux-${process.arch}`)), true, 'the layer with the Claude SDK platform package is part of the image');
   assert.equal(fs.existsSync(path.join(sdkScope, `claude-agent-sdk-linux-${process.arch}-musl`)), false, 'no musl copy');
+  // The launcher's runtime choice with this plugin and this image's runtime. A runtime saved in the home directory by an earlier
+  // version holds earlier releases only, and the plugin would download its own (about 0.7 GB) at the first start of this image.
+  // The launcher gives it the ready runtime in the image instead, as it does on a fresh home.
+  const { chooseRuntimeDir, BUNDLED_RUNTIME } = await import('/usr/local/lib/pi-paseo-ha/runtime-dir.mjs');
+  assert.equal(BUNDLED_RUNTIME, process.env.PI_PASEO_RUNTIME_DIR);
+  const choice = () => chooseRuntimeDir({ home: process.env.HOME, pluginRoot: async () => plugin.root });
+  assert.equal(await choice(), BUNDLED_RUNTIME, 'a fresh home gets the runtime in the image');
+  const savedRuntime = path.join(process.env.HOME, '.local/share/pi-paseo/runtime');
+  fs.mkdirSync(path.join(savedRuntime, 'releases', layout.PRIOR_RUNTIME_REVISIONS[0]), { recursive: true });
+  assert.equal(layout.runtimeReady({ runtimeDir: savedRuntime }), false, 'an earlier release is no runtime for this plugin');
+  assert.equal(await choice(), BUNDLED_RUNTIME, 'a saved runtime with earlier releases only does not hide the image\'s: no download at the first start');
+  fs.rmSync(savedRuntime, { recursive: true });
   const native = await verifyNativeRuntime({ bundle: '/opt/woow/pi-paseo-plugin', runtimeDir: process.env.PI_PASEO_RUNTIME_DIR });
   const cli = path.join(layout.runtimeDirectory(locations()), 'node_modules/@getpaseo/cli/bin/paseo');
   assert.equal(execFileSync(process.execPath, [cli, '--version'], { encoding: 'utf8' }).trim(), pins.paseoVersion);

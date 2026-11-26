@@ -7,12 +7,12 @@
     "sourceCommit": "d8652e971bdf66133d699052ab9003d39ff69159"
   },
   "agentConnect": {
-    "version": "0.1.23",
-    "archive": "candidate-packages/woowtech-pi-paseo-0.1.23.tgz",
-    "sha256": "0e4f3c99dc26b670b59c5b328285655dd47b0d81f892707f7ce387ca551e0265",
-    "sourceCommit": "152e1c3afe4b7081fa859f40aa316059cc3fa4fd",
-    "paseoVersion": "0.11.2",
-    "runtimeRevision": "0.11.2-r4-4cf9d40940bf"
+    "version": "0.1.24",
+    "archive": "candidate-packages/woowtech-pi-paseo-0.1.24.tgz",
+    "sha256": "a8ffeda600318f3c42e5e0f86d87b860f69c15b5f915286df64f7ba05a51f831",
+    "sourceCommit": "ee8f9b437dc8e7e4041dc0c9ef73755951cd5bbb",
+    "paseoVersion": "0.17.4",
+    "runtimeRevision": "0.17.4-r1-a651f42711da"
   },
   "omnigent": {
     "version": "0.16.0"

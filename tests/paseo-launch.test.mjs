@@ -29,7 +29,7 @@ function layout(t) {
   const marker = path.join(base, 'child.json');
   fs.mkdirSync(path.join(prefix, 'lib/pi-omnigent-ha'), { recursive: true });
   fs.writeFileSync(path.join(prefix, 'lib/pi-omnigent-ha/launch.mjs'),
-    `import fs from 'node:fs';\nfs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ argv: process.argv.slice(2) }));\nsetTimeout(() => process.exit(0), 120_000); // idles like Pi Web; never outlives a failed test for long\n`);
+    `import fs from 'node:fs';\nfs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ argv: process.argv.slice(2), runtime: process.env.PI_PASEO_RUNTIME_DIR }));\nsetTimeout(() => process.exit(0), 120_000); // idles like Pi Web; never outlives a failed test for long\n`);
   const agentDir = path.join(base, 'a');
   fs.mkdirSync(path.join(agentDir, 'home'), { recursive: true });
   const socket = path.join(agentDir, 'paseo-ha.sock');
@@ -37,10 +37,10 @@ function layout(t) {
   return { prefix, marker, agentDir, socket, launcher: path.join(prefix, 'lib/pi-paseo-ha/launch.mjs') };
 }
 /** Start the launcher as s6 does (plain node, no extra flags). By default PI_PASEO_AUTO_SETUP=false: nothing registers, no daemon. */
-function start(t, f, { args = [], register = false } = {}) {
+function start(t, f, { args = [], register = false, env = {} } = {}) {
   // Its own process group: a failed test kills the launcher and the stand-in together, and the pipes close.
   const child = spawn(process.execPath, [f.launcher, ...args], { detached: true, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { PATH: process.env.PATH, HOME: path.join(f.agentDir, 'home'), PI_CODING_AGENT_DIR: f.agentDir, ...(register ? {} : { PI_PASEO_AUTO_SETUP: 'false' }) } });
+    env: { PATH: process.env.PATH, HOME: path.join(f.agentDir, 'home'), PI_CODING_AGENT_DIR: f.agentDir, ...(register ? {} : { PI_PASEO_AUTO_SETUP: 'false' }), ...env } });
   const run = { child, stdout: '', stderr: '' };
   child.stdout.setEncoding('utf8').on('data', chunk => { run.stdout += chunk; });
   child.stderr.setEncoding('utf8').on('data', chunk => { run.stderr += chunk; });
@@ -89,7 +89,7 @@ test('the s6 entry point starts, serves its page on the private socket, starts i
   assert.match(page.body, /name="paseo-token" content="[a-f0-9]{64}"/);
   assert.equal((await get(f.socket, '/paseo-web/')).status, 404);
   await until(run, 'the launcher never started its child', () => fs.existsSync(f.marker));
-  assert.deepEqual(JSON.parse(fs.readFileSync(f.marker, 'utf8')), { argv: ['--forwarded'] }, 'the Omnigent launcher beside it, with the arguments it was given');
+  assert.deepEqual(JSON.parse(fs.readFileSync(f.marker, 'utf8')), { argv: ['--forwarded'], runtime: '/opt/woow/paseo-runtime' }, 'the Omnigent launcher beside it, with the arguments it was given and, on a fresh home, the runtime in the image');
   const stopped = Date.now();
   run.child.kill('SIGTERM');
   assert.deepEqual(await ended(run), { code: 0, signal: null }, 'a requested stop is a clean exit');
@@ -101,8 +101,8 @@ test('a launcher that cannot link fails at once and loudly, and this test would 
   // The review's mutation: one imported name no longer exists. `node --check` and every unit test stay green.
   const f = layout(t);
   const source = fs.readFileSync(f.launcher, 'utf8');
-  assert.ok(source.includes('import { seed, startLifecycle }'));
-  fs.writeFileSync(f.launcher, source.replace('import { seed, startLifecycle }', 'import { seed, startLifecycl }'));
+  assert.ok(source.includes('import { seed, startLifecycle, findPlugin, BUNDLE }'));
+  fs.writeFileSync(f.launcher, source.replace('import { seed, startLifecycle, findPlugin, BUNDLE }', 'import { seed, startLifecycl, findPlugin, BUNDLE }'));
   const run = start(t, f);
   const result = await ended(run);
   assert.notEqual(result.code, 0);
@@ -121,6 +121,28 @@ test('a failed registration cannot keep the lifecycle restore from running', { t
   assert.equal(fs.readFileSync(path.join(f.agentDir, 'settings.json'), 'utf8'), '{broken', 'and nothing was overwritten');
   assert.doesNotMatch(run.stderr, FAILURE, run.stderr);
   run.child.kill('SIGTERM'); assert.deepEqual(await ended(run), { code: 0, signal: null });
+});
+
+test('a runtime saved in the home directory stays in use when the plugin cannot be asked, and a runtime named by the operator is never replaced', { timeout: 60_000 }, async t => {
+  // Here no plugin is installed (the fixture has no /opt/woow), so the launcher cannot ask which release is needed and
+  // does what it always did. That a saved runtime without the needed release gives way to the image's is
+  // tests/paseo-runtime-dir.test.mjs (stand-in plugin), tests/paseo-contract.test.mjs (the frozen plugin) and the image smoke.
+  if (fs.existsSync('/opt/woow/pi-paseo-plugin')) return t.skip('this host carries the add-on\'s plugin, which the launcher would consult');
+  const f = layout(t);
+  const saved = path.join(f.agentDir, 'home/.local/share/pi-paseo/runtime');
+  fs.mkdirSync(path.join(saved, 'releases'), { recursive: true });
+  const run = start(t, f);
+  await until(run, 'the launcher never started its child', () => fs.existsSync(f.marker));
+  assert.equal(JSON.parse(fs.readFileSync(f.marker, 'utf8')).runtime, saved);
+  run.child.kill('SIGTERM'); assert.deepEqual(await ended(run), { code: 0, signal: null });
+  assert.deepEqual(fs.readdirSync(saved), ['releases'], 'and the launcher added nothing to it');
+
+  const named = layout(t), own = path.join(named.agentDir, 'my-runtime');
+  fs.mkdirSync(path.join(named.agentDir, 'home/.local/share/pi-paseo/runtime'), { recursive: true });
+  const second = start(t, named, { env: { PI_PASEO_RUNTIME_DIR: own } });
+  await until(second, 'the launcher never started its child', () => fs.existsSync(named.marker));
+  assert.equal(JSON.parse(fs.readFileSync(named.marker, 'utf8')).runtime, own, 'the operator\'s directory, whatever is saved in the home');
+  second.child.kill('SIGTERM'); assert.deepEqual(await ended(second), { code: 0, signal: null });
 });
 
 test('every relative import of both launchers resolves and every named import is a real export', async () => {
