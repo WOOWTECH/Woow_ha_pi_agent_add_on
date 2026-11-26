@@ -202,12 +202,12 @@ Logs from each retry show up in the addon Logs tab under the `video-tools-init` 
 
 ## Current coordinated candidate (unpublished)
 
-The isolated HA `0.15.28-rc.3` candidate pairs Agent Connect `0.1.27-rc.3`,
-Omnigent `0.3.42-rc.3`, and Paseo `0.17.5-r3-8664f2c3f8f5`. It retains the
-0.15.27 bridge's startup progress and saved-target pending behavior. Exact
-archive hashes and provenance are in `candidate-packages/manifest.json` and
-`cli-runtime/versions.json`. This candidate has not passed HA image or
-Supervisor upgrade gates and is not a published release.
+The isolated HA `0.15.28-rc.5` candidate pins the exact Agent Connect
+`0.1.27-rc.5` adapter and Omnigent `0.3.42-rc.5` combined archive tuples, and
+retains Paseo runtime `0.17.5-r4-8664f2c3f8f5` with the a7 phone-board payload.
+Archive hashes and provenance are in `candidate-packages/manifest.json` and
+`cli-runtime/versions.json`. RC5 CI and release gates remain pending; this is
+not a published release.
 
 ## Smart Tasks (Agent Connect 0.1.25; historical 0.15.26 behavior)
 

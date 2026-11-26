@@ -1,3 +1,10 @@
+## 0.15.28-rc.5 — unpublished candidate
+
+- Pin Agent Connect 0.1.27-rc.5 to source `867d9065f609aa5e32d88f2d55cf07c5d3fadc3e`, archive SHA-256 `581d5468020344dc93728da862118a4f8258a1a9a610ca16336e865345dceaa5`, adapter SHA-256 `aefb39dd6c378571ea8146bfa27fa153609da7460bc7198c3cfeb471ce02bcd6`, and Paseo runtime `0.17.5-r4-8664f2c3f8f5` with the a7 payload.
+- Pin Omnigent 0.3.42-rc.5 from source `f6c20d5150a41d76627f2684e5f338c457f80d09`, archive SHA-256 `07a4c4fb0399a04d79bb73f518a088504147fbc5e02b115ef6cca77e80b1b63f`, and combined-patch SHA-256 `5bbbd15bf9b0734bb4964c79dd620ecbc3e0ccda26af3cec2cb6a488d8eba7aa`.
+- The coordinated archives carry the reported Next/eslint 16.4.6 security-gate remediation; HA keeps official Pi Web 0.12.0 unchanged. No local HA image build.
+- Base `d305d6bc` CI run `45907889482` passed Ingress, upgrade runtime/comparison and amd64/aarch64 image jobs; Release was skipped. This is not RC.5 CI evidence; a new run is required.
+
 ## 0.15.28-rc.3 — unpublished candidate
 
 - Pair Agent Connect 0.1.27-rc.3, Omnigent 0.3.42-rc.3 and the official Paseo 0.17.5 daemon with frozen runtime `0.17.5-r3-8664f2c3f8f5`. The exact peer-matched plugin archives and hashes are recorded in `candidate-packages/manifest.json` and `cli-runtime/versions.json`.

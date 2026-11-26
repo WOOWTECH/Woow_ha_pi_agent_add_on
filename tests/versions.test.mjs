@@ -36,13 +36,21 @@ test('versions.json pins exact versions and the hash-checked frozen plugin archi
     const candidate = manifest.find(row => row.file === path.basename(archive));
     assert.equal(candidate?.sha256, sha256, `${name}: manifest.json`);
     assert.equal(candidate?.sourceCommit, sourceCommit, `${name}: manifest.json`);
+    if (pins[name].combinedPatchSha256) assert.equal(candidate?.combinedPatchSha256, pins[name].combinedPatchSha256, `${name}: combined patch manifest`);
+    if (pins[name].adapterSha256) assert.equal(candidate?.adapterSha256, pins[name].adapterSha256, `${name}: adapter manifest`);
   }
   assert.equal(manifest.find(row => row.file === path.basename(pins.agentConnect.archive)).runtimeRevision, pins.agentConnect.runtimeRevision, 'manifest.json');
 });
 
-test('coordinated plugin prereleases stay marked as unpublished candidates', () => {
-  assert.equal(pins.agentConnect.version, '0.1.27-rc.3');
-  assert.equal(pins.omnigentPlugin.version, '0.3.42-rc.3');
+test('coordinated rc.5 plugin archives and adapter digests stay unpublished candidates', () => {
+  assert.equal(pins.agentConnect.version, '0.1.27-rc.5');
+  assert.equal(pins.agentConnect.sourceCommit, '867d9065f609aa5e32d88f2d55cf07c5d3fadc3e');
+  assert.equal(pins.agentConnect.sha256, '581d5468020344dc93728da862118a4f8258a1a9a610ca16336e865345dceaa5');
+  assert.equal(pins.agentConnect.adapterSha256, 'aefb39dd6c378571ea8146bfa27fa153609da7460bc7198c3cfeb471ce02bcd6');
+  assert.equal(pins.omnigentPlugin.version, '0.3.42-rc.5');
+  assert.equal(pins.omnigentPlugin.sourceCommit, 'f6c20d5150a41d76627f2684e5f338c457f80d09');
+  assert.equal(pins.omnigentPlugin.sha256, '07a4c4fb0399a04d79bb73f518a088504147fbc5e02b115ef6cca77e80b1b63f');
+  assert.equal(pins.omnigentPlugin.combinedPatchSha256, '5bbbd15bf9b0734bb4964c79dd620ecbc3e0ccda26af3cec2cb6a488d8eba7aa');
   const manifest = JSON.parse(read('candidate-packages/manifest.json')).artifacts;
   for (const pin of [pins.agentConnect, pins.omnigentPlugin]) {
     const row = manifest.find(item => item.file === path.basename(pin.archive));
@@ -50,7 +58,7 @@ test('coordinated plugin prereleases stay marked as unpublished candidates', () 
     assert.equal(row?.releaseUrl, undefined, 'a candidate must not claim a published release URL');
   }
   assert.equal(pins.agentConnect.paseoVersion, '0.17.5');
-  assert.equal(pins.agentConnect.runtimeRevision, '0.17.5-r3-8664f2c3f8f5');
+  assert.equal(pins.agentConnect.runtimeRevision, '0.17.5-r4-8664f2c3f8f5');
 });
 
 test('the pinned Omnigent archive contains the exact candidate package identity', () => {
@@ -58,6 +66,19 @@ test('the pinned Omnigent archive contains the exact candidate package identity'
   const pkg = JSON.parse(tar('-xzOf', path.join(root, pin.archive), 'package/package.json'));
   assert.equal(pkg.name, '@woowtech/pi-omnigent-plugin');
   assert.equal(pkg.version, pin.version);
+  const patch = tar('-xzOf', path.join(root, pin.archive), 'package/integrations/pi-web/combined.adapter.patch');
+  assert.equal(createHash('sha256').update(patch).digest('hex'), pin.combinedPatchSha256);
+  const metadata = JSON.parse(tar('-xzOf', path.join(root, pin.archive), 'package/integrations/pi-web/combined.adapter-meta.json'));
+  assert.equal(metadata.patchSha256, pin.combinedPatchSha256);
+  assert.equal(metadata.paseo.packageName, '@woowtech/pi-paseo');
+  assert.equal(metadata.paseo.packageVersion, pins.agentConnect.version);
+  const paseoAdapter = tar('-xzOf', path.join(root, pins.agentConnect.archive), 'package/host/adapter.patch');
+  assert.equal(metadata.paseo.adapterPatchSha256, pins.agentConnect.adapterSha256);
+  assert.equal(createHash('sha256').update(paseoAdapter).digest('hex'), metadata.paseo.adapterPatchSha256);
+  assert.equal(metadata.omnigent.packageName, pkg.name);
+  assert.equal(metadata.omnigent.packageVersion, pin.version);
+  const omnigentAdapter = tar('-xzOf', path.join(root, pin.archive), 'package/integrations/pi-web/adapter.patch');
+  assert.equal(metadata.omnigent.adapterPatchSha256, createHash('sha256').update(omnigentAdapter).digest('hex'));
 });
 
 test('the Agent Connect archive is the pinned release: no bundled web client, runtime revision derived from its lockfile', () => {
@@ -75,6 +96,24 @@ test('the Agent Connect archive is the pinned release: no bundled web client, ru
   assert.equal(runtimeRevision.replace(/-r\d+-/, '-r-'), `${paseoVersion}-r-${lock.slice(0, 12)}`);
   const runtime = JSON.parse(tar('-xzOf', path.join(root, archive), 'package/runtime/package.json'));
   assert.equal(runtime.dependencies['@getpaseo/cli'], paseoVersion, 'the daemon the runtime installs');
+});
+
+test('Agent Connect rc.5 carries the exact adapter and peer-matched r4/a7 payload', () => {
+  const pin = pins.agentConnect;
+  const adapterMeta = JSON.parse(tar('-xzOf', path.join(root, pin.archive), 'package/host/adapter-meta.json'));
+  const adapter = tar('-xzOf', path.join(root, pin.archive), 'package/host/adapter.patch');
+  assert.equal(createHash('sha256').update(adapter).digest('hex'), pin.adapterSha256);
+  assert.equal(adapterMeta.patchSha256, pin.adapterSha256);
+  assert.equal(pin.runtimeRevision, '0.17.5-r4-8664f2c3f8f5');
+  const provenance = JSON.parse(tar('-xzOf', path.join(root, pin.archive), 'package/runtime/better-paseo/provenance.json'));
+  assert.equal(provenance.smartCommit, 'a7bfd65a3f39076cf664e28687818c24952e261c');
+  for (const [file, hash] of Object.entries({
+    'index.client.ts': '68f27211b8fc364ae7b3e58e4b7c6026bdca989cfd2251f27e830d450ad4c922',
+    'index.server.ts': 'e2dcac63d3a3c2816b9e3c639e6abb2f71a5a50872af989dd6b83a7299bdcccd',
+    'server/builtin.js': '7baa01803bcf477181169db05e537ecdc3075b295655ba5b2eee5e9a4db98109',
+    'builtin-build.json': 'da1f9e36773dae2c69024e6dd337ce23835b00c11044a703dd8e632e83be5fc6',
+    'THIRD_PARTY_NOTICES.txt': '1d89a0c7fddb8b83545bb727b9c1bb9bac35f1bbc173bc01081bb591ffc2f1e6',
+  })) assert.equal(provenance.files[file], hash, file);
 });
 
 test('the Claude Code and Codex package locks install the pinned versions', () => {
