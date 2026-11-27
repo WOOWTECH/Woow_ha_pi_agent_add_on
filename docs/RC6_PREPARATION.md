@@ -6,7 +6,7 @@ with Omnigent `0.3.42-rc.6`. Paseo remains
 
 | Package | Source | Archive SHA-256 |
 | --- | --- | --- |
-| Agent Connect 0.1.27-rc.6 | `867d9065f609aa5e32d88f2d55cf07c5d3fadc3e` (archive built at `ba9f1c408a61193efc47c2914c6edd67c6f681b7`) | `224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335` |
+| Agent Connect 0.1.27-rc.6 | `ba9f1c408a61193efc47c2914c6edd67c6f681b7` (source and archive build commit) | `224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335` |
 | Omnigent 0.3.42-rc.6 | `d4640bac3fd48b338c1f81230cb3d31fb75f79b2` | `91321ee0af4a8500317b726113e0c24332026f26142c4400b283cd55883f12e0` |
 
 Agent Connect adapter SHA-256 is

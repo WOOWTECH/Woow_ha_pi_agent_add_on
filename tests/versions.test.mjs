@@ -44,8 +44,9 @@ test('versions.json pins exact versions and the hash-checked frozen plugin archi
 
 test('coordinated rc.6 plugin archives and adapter digests stay unpublished candidates', () => {
   assert.equal(pins.agentConnect.version, '0.1.27-rc.6');
-  assert.equal(pins.agentConnect.sourceCommit, '867d9065f609aa5e32d88f2d55cf07c5d3fadc3e');
+  assert.equal(pins.agentConnect.sourceCommit, 'ba9f1c408a61193efc47c2914c6edd67c6f681b7');
   assert.equal(pins.agentConnect.archiveBuildCommit, 'ba9f1c408a61193efc47c2914c6edd67c6f681b7');
+  assert.equal(pins.agentConnect.sourceCommit, pins.agentConnect.archiveBuildCommit);
   assert.equal(pins.agentConnect.sha256, '224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335');
   assert.equal(pins.agentConnect.adapterSha256, '22d3a604d0c3ddc9305afe07f9f68524bec906fddb16636c08ac2783b4442a6c');
   assert.equal(pins.omnigentPlugin.version, '0.3.42-rc.6');
