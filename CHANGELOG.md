@@ -1,21 +1,11 @@
-## 0.15.28-rc.6 — unpublished candidate
+## 0.15.28
 
-- Pair Agent Connect 0.1.27-rc.6 (archive SHA-256 `224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335`; adapter `22d3a604d0c3ddc9305afe07f9f68524bec906fddb16636c08ac2783b4442a6c`) with Omnigent 0.3.42-rc.6 (archive SHA-256 `91321ee0af4a8500317b726113e0c24332026f26142c4400b283cd55883f12e0`; combined patch `8d55d6824307023eed5ead7fa89080650d3981fae1746378db9a400fab8a9632`).
-- Retain Paseo runtime `0.17.5-r4-8664f2c3f8f5` and the peer-matched a7 payload.
-- Add bounded raw-gzip plus normal `fetch().json()` sessions HTTP acceptance. RC6 image CI and publication gates remain pending; no local image build is claimed.
+- 內建 Agent Connect 0.1.27 與 Omnigent 0.3.42 正式版：官方 Paseo daemon 升到 0.17.5，Tasks 修正手機看板選取狀態、設定連續儲存與快捷鍵錄製。
 
-## 0.15.28-rc.5 — unpublished candidate
-
-- Pin Agent Connect 0.1.27-rc.5 to source `867d9065f609aa5e32d88f2d55cf07c5d3fadc3e`, archive SHA-256 `581d5468020344dc93728da862118a4f8258a1a9a610ca16336e865345dceaa5`, adapter SHA-256 `aefb39dd6c378571ea8146bfa27fa153609da7460bc7198c3cfeb471ce02bcd6`, and Paseo runtime `0.17.5-r4-8664f2c3f8f5` with the a7 payload.
-- Pin Omnigent 0.3.42-rc.5 from source `f6c20d5150a41d76627f2684e5f338c457f80d09`, archive SHA-256 `07a4c4fb0399a04d79bb73f518a088504147fbc5e02b115ef6cca77e80b1b63f`, and combined-patch SHA-256 `5bbbd15bf9b0734bb4964c79dd620ecbc3e0ccda26af3cec2cb6a488d8eba7aa`.
-- The coordinated archives carry the reported Next/eslint 16.4.6 security-gate remediation; HA keeps official Pi Web 0.12.0 unchanged. No local HA image build.
-- Base `d305d6bc` CI run `45907889482` passed Ingress, upgrade runtime/comparison and amd64/aarch64 image jobs; Release was skipped. This is not RC.5 CI evidence; a new run is required.
-
-## 0.15.28-rc.3 — unpublished candidate
-
-- Pair Agent Connect 0.1.27-rc.3, Omnigent 0.3.42-rc.3 and the official Paseo 0.17.5 daemon with frozen runtime `0.17.5-r3-8664f2c3f8f5`. The exact peer-matched plugin archives and hashes are recorded in `candidate-packages/manifest.json` and `cli-runtime/versions.json`.
-- Retain the 0.15.27 bridge behavior: report startup progress, expose a saved target awaiting application, require explicit stop/start to change the running brand, and guard concurrent settings writes. Pairing identity and existing data directories are not reset by this candidate; the HA upgrade gate must verify the actual image transition.
-- This is an unpublished coordinated candidate. The version-changing PR must pass the Store upgrade comparison, mock-Supervisor startup/upgrade test, image checks on amd64 and aarch64, and final artifact review before publication.
+- Bundle the Agent Connect 0.1.27 GitHub Release archive (SHA-256 `aecf3bdff1505d3745ddc694f1e50fead50a0fc19b3fa2c82205174917143b6f`; adapter `22d3a604d0c3ddc9305afe07f9f68524bec906fddb16636c08ac2783b4442a6c`) and the Omnigent 0.3.42 GitHub Release archive (SHA-256 `7ffa8983e3bb2d9790f3122fd53db3e7adca4e24aed33f37aa4cc86bbeea5bb5`; combined patch `8d55d6824307023eed5ead7fa89080650d3981fae1746378db9a400fab8a9632`).
+- Upgrade the official Paseo daemon from 0.17.4 to 0.17.5 with the prebuilt runtime `0.17.5-r4-8664f2c3f8f5` and the peer-matched Better Paseo Tasks payload: the phone board keeps its selection, settings can be saved repeatedly and shortcut recording works.
+- Rebuild Pi Web 0.12.0 from its pinned upstream source with Next.js 16.4.6 (security remediation); session lists stay plain JSON under Next's own HTTP compression. The settings page and its Ingress bridge behave as in 0.15.27.
+- Retain the 0.15.27 bridge behavior: start/stop progress, a saved target awaiting application, and an explicit stop/start to change the running brand. Pairing, host identity, conversations and Tasks data stay in the existing Paseo data directory; installing this update restarts the container through Supervisor.
 
 ## 0.15.27
 

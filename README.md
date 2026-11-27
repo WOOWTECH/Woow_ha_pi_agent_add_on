@@ -256,16 +256,11 @@ The runtime is composed from the following packages (all bundled in the image):
 
 **Pinning rationale.** `@agegr/pi-web` is pinned (not `@latest`) because the upstream ships 100+ hardcoded `/api/*` routes and absolute-path assets that the nginx shim depends on. An upstream refactor of `_next` chunk names, RSC prefetch shape, or a new `/api/*` route can silently regress the shim without any local code change — and the failure mode is not an error, it is one panel of the UI quietly breaking. Bump manually, and run [`tests/shim-routes.mjs`](tests/shim-routes.mjs) with the new release's routes added before shipping.
 
-**Unpublished HA 0.15.28-rc.6 candidate.** Agent Connect 0.1.27-rc.6 archive SHA-256
-`224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335`; Omnigent
-0.3.42-rc.6 archive SHA-256
-`91321ee0af4a8500317b726113e0c24332026f26142c4400b283cd55883f12e0`, combined
-adapter SHA-256 `8d55d6824307023eed5ead7fa89080650d3981fae1746378db9a400fab8a9632`.
-Paseo runtime remains `0.17.5-r4-8664f2c3f8f5`; this is an unpublished candidate,
-not a stable release.
-Paseo remains `0.17.5-r4-8664f2c3f8f5` with the peer-matched a7 phone-board
-payload. This is an unpublished candidate; fresh RC6 CI and release gates remain
-required.
+**HA 0.15.28.** Bundles the Agent Connect 0.1.27 GitHub Release archive
+(SHA-256 `aecf3bdff1505d3745ddc694f1e50fead50a0fc19b3fa2c82205174917143b6f`) and the Omnigent 0.3.42 GitHub Release archive
+(SHA-256 `7ffa8983e3bb2d9790f3122fd53db3e7adca4e24aed33f37aa4cc86bbeea5bb5`, combined adapter SHA-256
+`8d55d6824307023eed5ead7fa89080650d3981fae1746378db9a400fab8a9632`). Paseo runs daemon 0.17.5 with runtime
+`0.17.5-r4-8664f2c3f8f5` and the peer-matched a7 phone-board payload.
 
 ### Container image
 

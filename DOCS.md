@@ -200,14 +200,13 @@ Logs from each retry show up in the addon Logs tab under the `video-tools-init` 
 
 本頁經由原有 Supervisor ingress 驗證與 nginx 來源限制，後端只監聽 `/data/pi-agent/omnigent-ha.sock`。不新增 LAN 連接埠。映像不包含 server 憑證或模型登入，不自動安裝或更新缺少的引擎。
 
-## Current coordinated candidate (unpublished)
+## Agent Connect 0.1.27 and Omnigent 0.3.42 (0.15.28)
 
-The isolated HA `0.15.28-rc.6` candidate pins the exact Agent Connect
-`0.1.27-rc.6` adapter and Omnigent `0.3.42-rc.6` combined archive tuples, and
-retains Paseo runtime `0.17.5-r4-8664f2c3f8f5` with the a7 phone-board payload.
-Archive hashes and provenance are in `candidate-packages/manifest.json` and
-`cli-runtime/versions.json`. RC6 CI and release gates remain pending; this is
-not a published release.
+HA `0.15.28` bundles the Agent Connect `0.1.27` and Omnigent `0.3.42` GitHub
+Release archives with their exact adapter and combined-patch digests, and the
+official Paseo daemon 0.17.5 with runtime `0.17.5-r4-8664f2c3f8f5` and the a7
+phone-board payload. Archive hashes, release URLs and provenance are in
+`candidate-packages/manifest.json` and `cli-runtime/versions.json`.
 
 ## Smart Tasks (Agent Connect 0.1.25; historical 0.15.26 behavior)
 

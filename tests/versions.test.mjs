@@ -42,22 +42,26 @@ test('versions.json pins exact versions and the hash-checked frozen plugin archi
   assert.equal(manifest.find(row => row.file === path.basename(pins.agentConnect.archive)).runtimeRevision, pins.agentConnect.runtimeRevision, 'manifest.json');
 });
 
-test('coordinated rc.6 plugin archives and adapter digests stay unpublished candidates', () => {
-  assert.equal(pins.agentConnect.version, '0.1.27-rc.6');
-  assert.equal(pins.agentConnect.sourceCommit, 'ba9f1c408a61193efc47c2914c6edd67c6f681b7');
-  assert.equal(pins.agentConnect.archiveBuildCommit, 'ba9f1c408a61193efc47c2914c6edd67c6f681b7');
+test('the paired plugin archives are the verified GitHub release assets', () => {
+  assert.equal(pins.agentConnect.version, '0.1.27');
+  assert.equal(pins.agentConnect.sourceCommit, '053a39a7b72e83787a419b97206adc34f45e35bb');
+  assert.equal(pins.agentConnect.archiveBuildCommit, '053a39a7b72e83787a419b97206adc34f45e35bb');
   assert.equal(pins.agentConnect.sourceCommit, pins.agentConnect.archiveBuildCommit);
-  assert.equal(pins.agentConnect.sha256, '224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335');
+  assert.equal(pins.agentConnect.sha256, 'aecf3bdff1505d3745ddc694f1e50fead50a0fc19b3fa2c82205174917143b6f');
   assert.equal(pins.agentConnect.adapterSha256, '22d3a604d0c3ddc9305afe07f9f68524bec906fddb16636c08ac2783b4442a6c');
-  assert.equal(pins.omnigentPlugin.version, '0.3.42-rc.6');
-  assert.equal(pins.omnigentPlugin.sourceCommit, 'd4640bac3fd48b338c1f81230cb3d31fb75f79b2');
-  assert.equal(pins.omnigentPlugin.sha256, '91321ee0af4a8500317b726113e0c24332026f26142c4400b283cd55883f12e0');
+  assert.equal(pins.omnigentPlugin.version, '0.3.42');
+  assert.equal(pins.omnigentPlugin.sourceCommit, '7b56ad586711e6a707c6c3f36ff5dc5fef2790a4');
+  assert.equal(pins.omnigentPlugin.sha256, '7ffa8983e3bb2d9790f3122fd53db3e7adca4e24aed33f37aa4cc86bbeea5bb5');
   assert.equal(pins.omnigentPlugin.combinedPatchSha256, '8d55d6824307023eed5ead7fa89080650d3981fae1746378db9a400fab8a9632');
   const manifest = JSON.parse(read('candidate-packages/manifest.json')).artifacts;
+  const releases = {
+    'woowtech-pi-paseo-0.1.27.tgz': 'https://github.com/WOOWTECH/pi-paseo-plugin/releases/download/v0.1.27/woowtech-pi-paseo-0.1.27.tgz',
+    'woowtech-pi-omnigent-plugin-0.3.42.tgz': 'https://github.com/WOOWTECH/pi-omnigent-plugin/releases/download/v0.3.42/woowtech-pi-omnigent-plugin-0.3.42.tgz',
+  };
   for (const pin of [pins.agentConnect, pins.omnigentPlugin]) {
     const row = manifest.find(item => item.file === path.basename(pin.archive));
-    assert.match(row?.status ?? '', /unpublished.*candidate/i);
-    assert.equal(row?.releaseUrl, undefined, 'a candidate must not claim a published release URL');
+    assert.equal(row?.status, 'verified GitHub release asset');
+    assert.equal(row?.releaseUrl, releases[row.file], 'the release asset URL of these exact bytes');
   }
   assert.equal(pins.agentConnect.paseoVersion, '0.17.5');
   assert.equal(pins.agentConnect.runtimeRevision, '0.17.5-r4-8664f2c3f8f5');
@@ -100,7 +104,7 @@ test('the Agent Connect archive is the pinned release: no bundled web client, ru
   assert.equal(runtime.dependencies['@getpaseo/cli'], paseoVersion, 'the daemon the runtime installs');
 });
 
-test('Agent Connect rc.6 carries the exact adapter and peer-matched r4/a7 payload', () => {
+test('Agent Connect 0.1.27 carries the exact adapter and peer-matched r4/a7 payload', () => {
   const pin = pins.agentConnect;
   const adapterMeta = JSON.parse(tar('-xzOf', path.join(root, pin.archive), 'package/host/adapter-meta.json'));
   const adapter = tar('-xzOf', path.join(root, pin.archive), 'package/host/adapter.patch');
@@ -181,7 +185,7 @@ test('the image smoke exercises real sessions JSON over gzip HTTP with owned syn
 });
 
 
-test('Pi Web RC6 is rebuilt from exact 0.12.0 source with a hash-locked Next 16.4.6 security gate', () => {
+test('Pi Web is rebuilt from exact 0.12.0 source with a hash-locked Next 16.4.6 security gate', () => {
   const pin = JSON.parse(read('patches/pi-web-source/build-pins.json'));
   const patch = read(pin.patch);
   assert.equal(pin.sourceRef, 'v0.12.0');
