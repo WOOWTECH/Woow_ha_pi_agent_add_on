@@ -29,6 +29,9 @@ try {
   assert.equal(pkg.version, pins.omnigentPlugin.version);
   // Pi Web is not in versions.json: the settings patch pins its compiled artifact hashes.
   assert.equal(JSON.parse(fs.readFileSync('/usr/local/lib/node_modules/@agegr/pi-web/package.json', 'utf8')).version, '0.12.0');
+  // Check the dependency actually installed in the final image, rather than
+  // trusting the candidate manifest or the upstream package's declared range.
+  assert.equal(JSON.parse(fs.readFileSync('/usr/local/lib/node_modules/@agegr/pi-web/node_modules/next/package.json', 'utf8')).version, '16.4.6');
   console.log('SMOKE: loading registered image plugin');
   seed(); const plugin = await loadPlugin(); assert.equal(typeof plugin.runtime.resumeAuthorizedHost, 'function'); assert.equal((await plugin.lifecycle()).active, true);
   // Registration never creates a setup conversation: no onboarding state, no session.
