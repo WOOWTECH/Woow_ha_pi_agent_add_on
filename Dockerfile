@@ -193,8 +193,10 @@ RUN set -euo pipefail; \
 # non-breaking space still resolves) while writes are never rewritten. It
 # asserts every hunk, so an upstream bump fails the build rather than shipping
 # an image that quietly lost the fix.
+# The runtime path is a symlink to the fixed source-build root (/opt/piweb-source/package).
+# `find -H` follows that command-line symlink only; plain `find` would scan nothing.
 RUN set -euo pipefail; \
-    mapfile -d '' FILES < <(find /opt/piweb/lib/node_modules/@agegr/pi-web \
+    mapfile -d '' FILES < <(find -H /opt/piweb/lib/node_modules/@agegr/pi-web \
       -path '*@earendil-works/*/dist/*/tools/path-utils.js' -print0); \
     echo "[patch] found ${#FILES[@]} path-utils.js copies"; \
     if [ "${#FILES[@]}" -lt 1 ]; then \
