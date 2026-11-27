@@ -61,6 +61,22 @@ test('coordinated rc.5 plugin archives and adapter digests stay unpublished cand
   assert.equal(pins.agentConnect.runtimeRevision, '0.17.5-r4-8664f2c3f8f5');
 });
 
+test('RC6 Agent Connect archive is hash-locked but staged until its matching Omnigent tuple arrives', () => {
+  const staged = JSON.parse(read('candidate-packages/pending/agent-connect-rc6.json'));
+  assert.equal(staged.status, 'staged-unpaired-do-not-select-for-image');
+  assert.equal(staged.version, '0.1.27-rc.6');
+  const archive = fs.readFileSync(path.join(root, staged.file));
+  assert.equal(createHash('sha256').update(archive).digest('hex'), staged.sha256);
+  const pkg = JSON.parse(tar('-xzOf', path.join(root, staged.file), 'package/package.json'));
+  assert.equal(pkg.name, '@woowtech/pi-paseo');
+  assert.equal(pkg.version, staged.version);
+  const adapter = tar('-xzOf', path.join(root, staged.file), 'package/host/adapter.patch');
+  assert.equal(createHash('sha256').update(adapter).digest('hex'), staged.adapterSha256);
+  assert.equal(staged.runtimeRevision, '0.17.5-r4-8664f2c3f8f5');
+  assert.equal(staged.pairedOmnigentVersionExpected, '0.3.42-rc.6');
+  assert.equal(pins.agentConnect.version, '0.1.27-rc.5', 'the active image remains on the exact RC5 pair until Omni RC6 is available');
+});
+
 test('the pinned Omnigent archive contains the exact candidate package identity', () => {
   const pin = pins.omnigentPlugin;
   const pkg = JSON.parse(tar('-xzOf', path.join(root, pin.archive), 'package/package.json'));
