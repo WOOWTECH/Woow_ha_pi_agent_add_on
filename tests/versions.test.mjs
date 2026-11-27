@@ -193,7 +193,12 @@ test('Pi Web RC6 is rebuilt from exact 0.12.0 source with a hash-locked Next 16.
   assert.match(patch, /"next": "16\.4\.6"/);
   assert.match(patch, /"eslint-config-next": "16\.4\.6"/);
   assert.match(patch, /"undici": "8\.12\.2"/);
-  assert.match(read('Dockerfile'), /git -C \"\$ROOT\" checkout --detach \"\$PI_WEB_SOURCE_COMMIT\"/);
+  assert.match(read('Dockerfile'), /test \"\$PI_WEB_SOURCE_COMMIT\" = \"\$PINNED_SOURCE_COMMIT\"/);
+  assert.match(read('Dockerfile'), /refs\/tags\/\$PINNED_SOURCE_REF/);
+  assert.match(read('Dockerfile'), /rev-parse \"refs\/tags\/\$PINNED_SOURCE_REF\^\{commit\}\"/);
+  assert.match(read('Dockerfile'), /git -C \"\$ROOT\" checkout --detach \"\$PINNED_SOURCE_COMMIT\"/);
+  assert.ok(read('Dockerfile').includes('rm -rf \"$ROOT/.git\" \"$ROOT/.next/cache\" \"$ROOT/node_modules/.cache\"'));
+  assert.ok(read('Dockerfile').includes('test ! -e \"$ROOT/.git\" && test ! -e \"$ROOT/.next/cache\"'));
   assert.match(read('Dockerfile'), /npm ci --include=dev/);
   assert.match(read('Dockerfile'), /npm audit --audit-level=high/);
   assert.match(read('Dockerfile'), /NEXT_TELEMETRY_DISABLED=1 npm run build/);

@@ -105,10 +105,14 @@ RUN set -euo pipefail; \
     mkdir -p "$(dirname "$ROOT")" /opt/piweb/bin; \
     git init "$ROOT"; \
     git -C "$ROOT" remote add origin https://github.com/agegr/pi-web.git; \
-    git -C "$ROOT" fetch --depth=1 origin refs/tags/v0.12.0:refs/tags/v0.12.0; \
-    git -C "$ROOT" checkout --detach "$PI_WEB_SOURCE_COMMIT"; \
-    test "$(git -C "$ROOT" rev-parse HEAD)" = "$PI_WEB_SOURCE_COMMIT"; \
+    PINNED_SOURCE_COMMIT="$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").sourceCommit')"; \
+    PINNED_SOURCE_REF="$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").sourceRef')"; \
+    test "$PI_WEB_SOURCE_COMMIT" = "$PINNED_SOURCE_COMMIT"; \
     test "$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").version')" = "$PI_WEB_VERSION"; \
+    git -C "$ROOT" fetch --depth=1 origin "refs/tags/$PINNED_SOURCE_REF:refs/tags/$PINNED_SOURCE_REF"; \
+    test "$(git -C "$ROOT" rev-parse "refs/tags/$PINNED_SOURCE_REF^{commit}")" = "$PINNED_SOURCE_COMMIT"; \
+    git -C "$ROOT" checkout --detach "$PINNED_SOURCE_COMMIT"; \
+    test "$(git -C "$ROOT" rev-parse HEAD)" = "$PINNED_SOURCE_COMMIT"; \
     echo "$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").patchSha256')  /opt/pi-web-source/pi-web-0.12.0-next-16.4.6.patch" | sha256sum -c -; \
     git -C "$ROOT" apply /opt/pi-web-source/pi-web-0.12.0-next-16.4.6.patch; \
     echo "$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").patchedPackageJsonSha256')  $ROOT/package.json" | sha256sum -c -; \
@@ -120,6 +124,8 @@ RUN set -euo pipefail; \
     NEXT_TELEMETRY_DISABLED=1 npm run build; \
     node -e 'const p=require(process.argv[1]); if(p.version!=="16.4.6")process.exit(1)' "$ROOT/node_modules/next/package.json"; \
     npm prune --omit=dev --ignore-scripts --no-fund; \
+    rm -rf "$ROOT/.git" "$ROOT/.next/cache" "$ROOT/node_modules/.cache"; \
+    test ! -e "$ROOT/.git" && test ! -e "$ROOT/.next/cache" && test ! -e "$ROOT/node_modules/.cache"; \
     ln -s ../lib/node_modules/@agegr/pi-web/bin/pi-web.js /opt/piweb/bin/pi-web; \
     rm -rf /tmp/npm-cache
 
