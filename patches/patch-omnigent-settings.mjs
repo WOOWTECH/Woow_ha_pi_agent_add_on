@@ -55,6 +55,9 @@ const references = [
   ['index.segments/_full.segment.rsc', '339552c62b086db7b522691f22e72513052e6f5732ecda8b796ffc321b4fa0bf'],
   ['index.rsc', '339552c62b086db7b522691f22e72513052e6f5732ecda8b796ffc321b4fa0bf'],
 ];
+// Read-only view for patches/print-compiled-settings-pins.mjs, which reports every
+// build-derived value above after a Pi Web, lockfile or build-root change.
+export const COMPILED_PIN_TABLE = Object.freeze({ specs, oldName, references });
 const hash = text => createHash('sha256').update(text).digest('hex');
 function replaceOnce(text, from, to) {
   if (text.split(from).length !== 2) throw new Error('Omnigent settings: expected exactly one source anchor');

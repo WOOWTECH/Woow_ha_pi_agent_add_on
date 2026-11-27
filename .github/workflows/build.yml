@@ -243,6 +243,9 @@ jobs:
         test "$(node -p 'require("./node_modules/next/package.json").version')" = "$(jq -er .nextVersion "$GITHUB_WORKSPACE/$pins")"
         node "$GITHUB_WORKSPACE/patches/patch-chatgpt-device-id.mjs" "$pi_web_root/.next/server/app/api/auth/login/[provider]/route.js"
         node --check "$pi_web_root/.next/server/app/api/auth/login/[provider]/route.js"
+        # Diagnostic first, so one failing run reports every build-derived pin
+        # (Next module IDs embed the absolute build root). It never gates the job.
+        node "$GITHUB_WORKSPACE/patches/print-compiled-settings-pins.mjs" "$pi_web_root" || true
         PI_WEB_ROOT="$pi_web_root" node --test "$GITHUB_WORKSPACE/patches/tests/omnigent-settings.test.mjs"
     - name: Prepare Pi Web production dependencies as the image does
       run: |
