@@ -168,7 +168,12 @@ test('the image smoke exercises real sessions JSON over gzip HTTP with owned syn
   assert.match(smoke, /verifySessionsHttpJson\(/);
   assert.match(dockerfile, /^COPY tests\/sessions-http-json-acceptance\.mjs \/tmp\/sessions-http-json-acceptance\.mjs$/m);
   assert.match(acceptance, /accept-encoding': 'gzip'/);
-  assert.match(acceptance, /gunzipSync\(response\.body\)/);
+  assert.match(acceptance, /gunzipSync\(response\.body, \{ maxOutputLength: MAX_JSON_BYTES \}\)/);
   assert.match(acceptance, /JSON\.parse\(decoded\.toString\('utf8'\)\)/);
+  assert.match(acceptance, /await fetchResponse\.json\(\)/, 'the standard client JSON path parses transparently decompressed gzip');
+  assert.match(acceptance, /MAX_WIRE_BYTES = 1024 \* 1024/);
+  assert.match(acceptance, /assert\.equal\(target\.hostname, '127\.0\.0\.1'/);
+  assert.match(acceptance, /result\.on\('aborted'/);
+  assert.match(acceptance, /result\.on\('error'/);
   assert.match(acceptance, /minimumSessions = 24/);
 });
