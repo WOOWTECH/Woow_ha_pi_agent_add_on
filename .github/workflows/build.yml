@@ -223,8 +223,9 @@ jobs:
         source_ref="$(jq -er .sourceRef "$pins")"
         source_commit="$(jq -er .sourceCommit "$pins")"
         patch="patches/pi-web-source/pi-web-0.12.0-next-16.4.6.patch"
-        mkdir -p "$RUNNER_TEMP/pi-web-native"
-        pi_web_root="$RUNNER_TEMP/pi-web-native/package"
+        pi_web_root=/opt/piweb/lib/node_modules/@agegr/pi-web
+        sudo mkdir -p "$(dirname "$pi_web_root")"
+        sudo chown -R "$(id -u):$(id -g)" /opt/piweb
         git clone --depth=1 --branch "$source_ref" https://github.com/agegr/pi-web.git "$pi_web_root"
         test "$(git -C "$pi_web_root" rev-parse HEAD)" = "$source_commit"
         test "$(git -C "$pi_web_root" rev-parse "refs/tags/$source_ref^{commit}")" = "$source_commit"
@@ -245,7 +246,7 @@ jobs:
         PI_WEB_ROOT="$pi_web_root" node --test "$GITHUB_WORKSPACE/patches/tests/omnigent-settings.test.mjs"
     - name: Prepare Pi Web production dependencies as the image does
       run: |
-        pi_web_root="$RUNNER_TEMP/pi-web-native/package"
+        pi_web_root=/opt/piweb/lib/node_modules/@agegr/pi-web
         npm prune --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$pi_web_root"
         node -e 'for (const name of ["@earendil-works/pi-codemode", "@earendil-works/pi-mcp", "@earendil-works/chord"]) { const p=require(process.argv[1]+"/node_modules/"+name+"/package.json"); if(p.version!=="1.1.0") throw new Error(name+" "+p.version); }' "$pi_web_root"
     - name: Verify shared runtime migration against the image SDK
@@ -267,22 +268,22 @@ jobs:
         sha256="$(jq -er '.omnigentPlugin.sha256' cli-runtime/versions.json)"
         cp "$archive" "$RUNNER_TEMP/omnigent-plugin.tgz"
         echo "$sha256  $RUNNER_TEMP/omnigent-plugin.tgz" | sha256sum --check --strict
-        OMNIGENT_PLUGIN_TGZ="$RUNNER_TEMP/omnigent-plugin.tgz" PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" \
+        OMNIGENT_PLUGIN_TGZ="$RUNNER_TEMP/omnigent-plugin.tgz" PI_WEB_ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web \
           node --test tests/omnigent-contract.test.mjs
         archive="$(jq -er '.agentConnect.archive' cli-runtime/versions.json)"
         sha256="$(jq -er '.agentConnect.sha256' cli-runtime/versions.json)"
         cp "$archive" "$RUNNER_TEMP/agent-connect.tgz"
         echo "$sha256  $RUNNER_TEMP/agent-connect.tgz" | sha256sum --check --strict
-        PASEO_PLUGIN_TGZ="$RUNNER_TEMP/agent-connect.tgz" PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" \
+        PASEO_PLUGIN_TGZ="$RUNNER_TEMP/agent-connect.tgz" PI_WEB_ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web \
           node --test tests/paseo-contract.test.mjs
     - name: Exercise compiled native settings and Ingress fallback in Chromium
       run: |
         sudo apt-get update && sudo apt-get install -y nginx
         npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/ha-browser" playwright@1.62.1
         node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
-        node patches/patch-omnigent-settings.mjs "$RUNNER_TEMP/pi-web-native/package"
+        node patches/patch-omnigent-settings.mjs /opt/piweb/lib/node_modules/@agegr/pi-web
         export PLAYWRIGHT_MODULE="$RUNNER_TEMP/ha-browser/node_modules/playwright/index.mjs"
-        PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" EVIDENCE_DIR="$RUNNER_TEMP/ha-native-evidence" node tests/omnigent-native-browser.mjs
+        PI_WEB_ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web EVIDENCE_DIR="$RUNNER_TEMP/ha-native-evidence" node tests/omnigent-native-browser.mjs
         node tests/omnigent-browser.mjs
         node tests/paseo-browser.mjs
     - name: Retain native settings browser evidence

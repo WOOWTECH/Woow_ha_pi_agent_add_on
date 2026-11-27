@@ -67,7 +67,8 @@ function transform(source, spec) {
     if (hash(original) !== spec.sha256) throw new Error('Omnigent settings: patched artifact has changed');
     return source;
   }
-  if (hash(source) !== spec.sha256) throw new Error('Omnigent settings: unsupported compiled artifact; revalidate the Pi Web build');
+  const actualHash = hash(source);
+  if (actualHash !== spec.sha256) throw new Error(`Omnigent settings: unsupported compiled artifact (expected ${spec.sha256}, got ${actualHash}); revalidate the Pi Web build`);
   for (const [from, to] of spec.replacements) source = replaceOnce(source, from, to);
   return source + marker;
 }
@@ -95,7 +96,8 @@ export function patchSettings(root) {
     if (!fs.lstatSync(file).isFile()) throw new Error('Settings reference must be a regular file');
     const before = fs.readFileSync(file, 'utf8');
     const original = alreadyPatched ? before.replaceAll(newName, oldName) : before;
-    if (hash(original) !== checksum) throw new Error(`Omnigent settings: incompatible asset reference ${relative}`);
+    const actualHash = hash(original);
+    if (actualHash !== checksum) throw new Error(`Omnigent settings: incompatible asset reference ${relative} (expected ${checksum}, got ${actualHash})`);
     planned.push({ file, before, after: original.replaceAll(oldName, newName) });
   }
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ha-settings-syntax-'));
