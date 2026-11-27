@@ -217,16 +217,37 @@ jobs:
         python3 -B tests/native-history-upgrade.test.py
         python3 -B tests/final-maintenance-runtime.test.py
         sudo -n python3 -I -B tests/native-history-report-permissions.test.py
-    - name: Validate native settings against the official compiled Pi Web artifact
+    - name: Build pinned Pi Web source and validate native settings
       run: |
+        pins=patches/pi-web-source/build-pins.json
+        source_ref="$(jq -er .sourceRef "$pins")"
+        source_commit="$(jq -er .sourceCommit "$pins")"
+        patch="patches/pi-web-source/pi-web-0.12.0-next-16.4.6.patch"
         mkdir -p "$RUNNER_TEMP/pi-web-native"
-        npm pack @agegr/pi-web@0.12.0 --pack-destination "$RUNNER_TEMP/pi-web-native"
-        tar -xzf "$RUNNER_TEMP/pi-web-native/agegr-pi-web-0.12.0.tgz" -C "$RUNNER_TEMP/pi-web-native"
-        PI_WEB_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test patches/tests/omnigent-settings.test.mjs
-    - name: Install Pi Web production dependencies as the image does
+        pi_web_root="$RUNNER_TEMP/pi-web-native/package"
+        git clone --depth=1 --branch "$source_ref" https://github.com/agegr/pi-web.git "$pi_web_root"
+        test "$(git -C "$pi_web_root" rev-parse HEAD)" = "$source_commit"
+        test "$(git -C "$pi_web_root" rev-parse "refs/tags/$source_ref^{commit}")" = "$source_commit"
+        echo "$(jq -er .patchSha256 "$pins")  $patch" | sha256sum --check --strict
+        git -C "$pi_web_root" apply "$GITHUB_WORKSPACE/$patch"
+        echo "$(jq -er .patchedPackageJsonSha256 "$pins")  $pi_web_root/package.json" | sha256sum --check --strict
+        echo "$(jq -er .patchedPackageLockSha256 "$pins")  $pi_web_root/package-lock.json" | sha256sum --check --strict
+        cd "$pi_web_root"
+        npm ci --include=dev --no-fund
+        npm audit --audit-level=high --no-fund
+        mapfile -d '' path_utils < <(find "$pi_web_root" -path '*@earendil-works/*/dist/*/tools/path-utils.js' -print0)
+        test "${#path_utils[@]}" -ge 1
+        node "$GITHUB_WORKSPACE/patches/fix-unicode-space-paths.mjs" "${path_utils[@]}"
+        NEXT_TELEMETRY_DISABLED=1 npm run build
+        test "$(node -p 'require("./node_modules/next/package.json").version')" = "$(jq -er .nextVersion "$GITHUB_WORKSPACE/$pins")"
+        node "$GITHUB_WORKSPACE/patches/patch-chatgpt-device-id.mjs" "$pi_web_root/.next/server/app/api/auth/login/[provider]/route.js"
+        node --check "$pi_web_root/.next/server/app/api/auth/login/[provider]/route.js"
+        PI_WEB_ROOT="$pi_web_root" node --test "$GITHUB_WORKSPACE/patches/tests/omnigent-settings.test.mjs"
+    - name: Prepare Pi Web production dependencies as the image does
       run: |
-        npm install --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/pi-web-native/package" \
-          @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0
+        pi_web_root="$RUNNER_TEMP/pi-web-native/package"
+        npm prune --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$pi_web_root"
+        node -e 'for (const name of ["@earendil-works/pi-codemode", "@earendil-works/pi-mcp", "@earendil-works/chord"]) { const p=require(process.argv[1]+"/node_modules/"+name+"/package.json"); if(p.version!=="1.1.0") throw new Error(name+" "+p.version); }' "$pi_web_root"
     - name: Verify shared runtime migration against the image SDK
       run: |
         echo "0914069fb0cf83f258cf81034bb16573f6e4242e8779cea47b4a5e841f98a937  candidate-packages/woowtech-pi-agent-shared-runtime-0.1.6.tgz" | sha256sum --check --strict

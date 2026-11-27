@@ -203,4 +203,11 @@ test('Pi Web RC6 is rebuilt from exact 0.12.0 source with a hash-locked Next 16.
   assert.match(read('Dockerfile'), /npm audit --audit-level=high/);
   assert.match(read('Dockerfile'), /NEXT_TELEMETRY_DISABLED=1 npm run build/);
   assert.match(read('Dockerfile'), /node_modules\/next\/package\.json/);
+  const workflow = read('.github/workflows/build.yml');
+  assert.match(workflow, /Build pinned Pi Web source and validate native settings/);
+  assert.match(workflow, /npm ci --include=dev/);
+  assert.match(workflow, /npm audit --audit-level=high/);
+  assert.match(workflow, /NEXT_TELEMETRY_DISABLED=1 npm run build/);
+  assert.match(workflow, /PI_WEB_ROOT=\"\$pi_web_root\" node --test/);
+  assert.doesNotMatch(workflow, /npm pack @agegr\/pi-web@0\.12\.0/);
 });
