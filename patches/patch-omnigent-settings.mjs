@@ -22,7 +22,7 @@ const frame = '(0,r.jsx)("iframe",{title:"Omnigent",src:' + prefix + '+"/omnigen
 const paseoFrame = frame.replaceAll("Omnigent", "Agent Connect").replace("/omnigent?", "/paseo/setup?");
 const specs = {
   client: {
-    sha256: '4ce31ce53f1f76cb476137d28e932a898f4ed1680fa9f4b7c3a415c0c30a435f',
+    sha256: 'ac18c04848bead1a116f08abbd88b705e42bc6680e1b44af6b070bb865eed560',
     replacements: [
       ['"/icons/catppuccin"', iconBase],
       [sections, expanded],
@@ -32,7 +32,7 @@ const specs = {
     ],
   },
   server: {
-    sha256: '86670efdf0d94a68e7b8e4cd61a73a4eb331ef1435215c5d6529cf8b4c7a5372',
+    sha256: '20af3728b46f5a2af6cc895dba58819f6f01a36a32489a64e42214e20b4b8a2a',
     replacements: [
       ['"/icons/catppuccin"', iconBase],
       [sections, expanded],
@@ -44,16 +44,16 @@ const specs = {
 };
 // References include the pre-rendered HTML and RSC, not just the JS manifest.
 // Keep the hash width unchanged so length-prefixed flight content stays valid.
-const oldName = 'page-7e8ae5987433d058.js';
+const oldName = 'page-5309ff419b280c46.js';
 const references = [
-  ['index.html', 'cbe8f6c4d38dcf349dbab1e08743fbc06b6ecaefca7ec52e4f34d74011ba4ef8'],
-  ['_global-error/page_client-reference-manifest.js', 'bd94af348c2cf0f9c9563827e8ca4dbb332fc015d037ca0212bf4b8d22c9869c'],
-  ['_not-found/page_client-reference-manifest.js', 'c83eb850303ca0997a5b946944c8a53c84f02e5ae6ce0a49268bca9b0edcfac7'],
-  ['login/page_client-reference-manifest.js', '757b6173505c9946c6c2f9b388bbf7a360395d033b2be39896aa3b5a7e1b8f7d'],
-  ['page_client-reference-manifest.js', 'c49ca41d477a8b5b89a9bc32633062880a16a0807b457b02d7743b3cf6218508'],
-  ['index.segments/__PAGE__.segment.rsc', '3cce9dc8a87acb539e25037029230e4a19d582b58eea73d819dcb9ef76014e60'],
-  ['index.segments/_full.segment.rsc', '339552c62b086db7b522691f22e72513052e6f5732ecda8b796ffc321b4fa0bf'],
-  ['index.rsc', '339552c62b086db7b522691f22e72513052e6f5732ecda8b796ffc321b4fa0bf'],
+  ['index.html', 'af51784f4d2752c9088169eb337bbc8e3afac89dd30edeaf548f813318519ffd'],
+  ['_global-error/page_client-reference-manifest.js', '0df7ac2048acb2116d1f8bc8541eecfcafa2ac0acc98f38ffafdfacceb08ce76'],
+  ['_not-found/page_client-reference-manifest.js', 'd149504ff56c736d011c487426527694232b601afa2c4d6acaaa1d7876773acb'],
+  ['login/page_client-reference-manifest.js', 'e3a1676790674436a0a366032bf2527d871205c29a82c20f22f5b66f28d1b232'],
+  ['page_client-reference-manifest.js', '6143099aaa16ea3c5ff772f08da6170dac54f3b3c9fe2ae5b439d58be98a087a'],
+  ['index.segments/__PAGE__.segment.rsc', '6c53201a6a69dd49a1d35ffee2fec6fe5ec2c2c9299ad5e3aebf3c1a6e72c4b9'],
+  ['index.segments/_full.segment.rsc', '286087d203e99851eca115d11a91843e1dc1f540e387afb5f70f1e3ec25c532a'],
+  ['index.rsc', '286087d203e99851eca115d11a91843e1dc1f540e387afb5f70f1e3ec25c532a'],
 ];
 // Read-only view for patches/print-compiled-settings-pins.mjs, which reports every
 // build-derived value above after a Pi Web, lockfile or build-root change.
