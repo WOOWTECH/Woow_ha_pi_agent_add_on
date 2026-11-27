@@ -223,9 +223,9 @@ jobs:
         source_ref="$(jq -er .sourceRef "$pins")"
         source_commit="$(jq -er .sourceCommit "$pins")"
         patch="patches/pi-web-source/pi-web-0.12.0-next-16.4.6.patch"
-        pi_web_root=/opt/piweb/lib/node_modules/@agegr/pi-web
+        pi_web_root=/opt/piweb-source/package
         sudo mkdir -p "$(dirname "$pi_web_root")"
-        sudo chown -R "$(id -u):$(id -g)" /opt/piweb
+        sudo chown -R "$(id -u):$(id -g)" /opt/piweb-source
         git clone --depth=1 --branch "$source_ref" https://github.com/agegr/pi-web.git "$pi_web_root"
         test "$(git -C "$pi_web_root" rev-parse HEAD)" = "$source_commit"
         test "$(git -C "$pi_web_root" rev-parse "refs/tags/$source_ref^{commit}")" = "$source_commit"
@@ -246,7 +246,7 @@ jobs:
         PI_WEB_ROOT="$pi_web_root" node --test "$GITHUB_WORKSPACE/patches/tests/omnigent-settings.test.mjs"
     - name: Prepare Pi Web production dependencies as the image does
       run: |
-        pi_web_root=/opt/piweb/lib/node_modules/@agegr/pi-web
+        pi_web_root=/opt/piweb-source/package
         npm prune --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$pi_web_root"
         node -e 'for (const name of ["@earendil-works/pi-codemode", "@earendil-works/pi-mcp", "@earendil-works/chord"]) { const p=require(process.argv[1]+"/node_modules/"+name+"/package.json"); if(p.version!=="1.1.0") throw new Error(name+" "+p.version); }' "$pi_web_root"
     - name: Verify shared runtime migration against the image SDK
@@ -255,8 +255,8 @@ jobs:
         mkdir -p "$RUNNER_TEMP/shared-runtime"
         tar -xzf candidate-packages/woowtech-pi-agent-shared-runtime-0.1.6.tgz --strip-components=1 -C "$RUNNER_TEMP/shared-runtime"
         npm ci --prefix "$RUNNER_TEMP/shared-runtime" --omit=dev --legacy-peer-deps --ignore-scripts --no-audit --no-fund
-        SHARED_RUNTIME_TEST_BUNDLE="$RUNNER_TEMP/shared-runtime" PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test tests/shared-distribution.test.mjs tests/shared-sync-only.test.mjs
-        PI_SHARED_SDK_ROOT="$RUNNER_TEMP/pi-web-native/package" node --test "$RUNNER_TEMP/shared-runtime/tests/resource-authority.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/resource-boundary.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/extension-scan.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/bridge.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/mcp-adapter.test.mjs"
+        SHARED_RUNTIME_TEST_BUNDLE="$RUNNER_TEMP/shared-runtime" PI_SHARED_SDK_ROOT=/opt/piweb-source/package node --test tests/shared-distribution.test.mjs tests/shared-sync-only.test.mjs
+        PI_SHARED_SDK_ROOT=/opt/piweb-source/package node --test "$RUNNER_TEMP/shared-runtime/tests/resource-authority.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/resource-boundary.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/extension-scan.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/bridge.test.mjs" "$RUNNER_TEMP/shared-runtime/tests/mcp-adapter.test.mjs"
     # The exact vendored plugins from cli-runtime/versions.json, driven by the add-on's
     # seed, lifecycle and Settings bridge in seconds, before any image build:
     # Omnigent: fresh install, same-path upgrade and a plugin source switch.
@@ -268,22 +268,22 @@ jobs:
         sha256="$(jq -er '.omnigentPlugin.sha256' cli-runtime/versions.json)"
         cp "$archive" "$RUNNER_TEMP/omnigent-plugin.tgz"
         echo "$sha256  $RUNNER_TEMP/omnigent-plugin.tgz" | sha256sum --check --strict
-        OMNIGENT_PLUGIN_TGZ="$RUNNER_TEMP/omnigent-plugin.tgz" PI_WEB_ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web \
+        OMNIGENT_PLUGIN_TGZ="$RUNNER_TEMP/omnigent-plugin.tgz" PI_WEB_ROOT=/opt/piweb-source/package \
           node --test tests/omnigent-contract.test.mjs
         archive="$(jq -er '.agentConnect.archive' cli-runtime/versions.json)"
         sha256="$(jq -er '.agentConnect.sha256' cli-runtime/versions.json)"
         cp "$archive" "$RUNNER_TEMP/agent-connect.tgz"
         echo "$sha256  $RUNNER_TEMP/agent-connect.tgz" | sha256sum --check --strict
-        PASEO_PLUGIN_TGZ="$RUNNER_TEMP/agent-connect.tgz" PI_WEB_ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web \
+        PASEO_PLUGIN_TGZ="$RUNNER_TEMP/agent-connect.tgz" PI_WEB_ROOT=/opt/piweb-source/package \
           node --test tests/paseo-contract.test.mjs
     - name: Exercise compiled native settings and Ingress fallback in Chromium
       run: |
         sudo apt-get update && sudo apt-get install -y nginx
         npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/ha-browser" playwright@1.62.1
         node "$RUNNER_TEMP/ha-browser/node_modules/playwright/cli.js" install --with-deps chromium
-        node patches/patch-omnigent-settings.mjs /opt/piweb/lib/node_modules/@agegr/pi-web
+        node patches/patch-omnigent-settings.mjs /opt/piweb-source/package
         export PLAYWRIGHT_MODULE="$RUNNER_TEMP/ha-browser/node_modules/playwright/index.mjs"
-        PI_WEB_ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web EVIDENCE_DIR="$RUNNER_TEMP/ha-native-evidence" node tests/omnigent-native-browser.mjs
+        PI_WEB_ROOT=/opt/piweb-source/package EVIDENCE_DIR="$RUNNER_TEMP/ha-native-evidence" node tests/omnigent-native-browser.mjs
         node tests/omnigent-browser.mjs
         node tests/paseo-browser.mjs
     - name: Retain native settings browser evidence

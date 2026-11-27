@@ -101,8 +101,9 @@ ARG PI_WEB_SOURCE_COMMIT=894e1a28dbeeb7b457c7712e495d975fe9927b89
 COPY patches/pi-web-source/ /opt/pi-web-source/
 COPY patches/ /opt/patches/
 RUN set -euo pipefail; \
-    ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web; \
-    mkdir -p "$(dirname "$ROOT")" /opt/piweb/bin; \
+    ROOT=/opt/piweb-source/package; \
+    RUNTIME_ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web; \
+    mkdir -p "$(dirname "$ROOT")" "$(dirname "$RUNTIME_ROOT")" /opt/piweb/bin; \
     git init "$ROOT"; \
     git -C "$ROOT" remote add origin https://github.com/agegr/pi-web.git; \
     PINNED_SOURCE_COMMIT="$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").sourceCommit')"; \
@@ -126,6 +127,7 @@ RUN set -euo pipefail; \
     npm prune --omit=dev --ignore-scripts --no-fund; \
     rm -rf "$ROOT/.git" "$ROOT/.next/cache" "$ROOT/node_modules/.cache"; \
     test ! -e "$ROOT/.git" && test ! -e "$ROOT/.next/cache" && test ! -e "$ROOT/node_modules/.cache"; \
+    ln -s "$ROOT" "$RUNTIME_ROOT"; \
     ln -s ../lib/node_modules/@agegr/pi-web/bin/pi-web.js /opt/piweb/bin/pi-web; \
     rm -rf /tmp/npm-cache
 
@@ -400,6 +402,7 @@ RUN mkdir -p /etc/apt/keyrings \
 # put the tree under /opt/piweb/{lib,bin}, so it maps onto /usr/local unchanged
 # and the `pi-web` bin stays a working relative symlink into lib/node_modules.
 COPY --from=piweb-builder /opt/piweb/lib/node_modules /usr/local/lib/node_modules
+COPY --from=piweb-builder /opt/piweb-source           /opt/piweb-source
 COPY --from=piweb-builder /opt/piweb/bin              /usr/local/bin
 COPY --from=piweb-builder /opt/pi-clis/claude /opt/pi-clis/claude
 COPY --from=piweb-builder /opt/pi-clis/codex /opt/pi-clis/codex
