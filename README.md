@@ -256,14 +256,15 @@ The runtime is composed from the following packages (all bundled in the image):
 
 **Pinning rationale.** `@agegr/pi-web` is pinned (not `@latest`) because the upstream ships 100+ hardcoded `/api/*` routes and absolute-path assets that the nginx shim depends on. An upstream refactor of `_next` chunk names, RSC prefetch shape, or a new `/api/*` route can silently regress the shim without any local code change — and the failure mode is not an error, it is one panel of the UI quietly breaking. Bump manually, and run [`tests/shim-routes.mjs`](tests/shim-routes.mjs) with the new release's routes added before shipping.
 
-**Unpublished HA 0.15.28-rc.5 candidate.** The isolated source candidate pins
-Agent Connect 0.1.27-rc.5 (archive SHA-256
-`581d5468020344dc93728da862118a4f8258a1a9a610ca16336e865345dceaa5`) and
-Omnigent 0.3.42-rc.5 (archive SHA-256
-`07a4c4fb0399a04d79bb73f518a088504147fbc5e02b115ef6cca77e80b1b63f`, combined
-patch `5bbbd15bf9b0734bb4964c79dd620ecbc3e0ccda26af3cec2cb6a488d8eba7aa`).
+**Unpublished HA 0.15.28-rc.6 candidate.** Agent Connect 0.1.27-rc.6 archive SHA-256
+`224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335`; Omnigent
+0.3.42-rc.6 archive SHA-256
+`91321ee0af4a8500317b726113e0c24332026f26142c4400b283cd55883f12e0`, combined
+adapter SHA-256 `8d55d6824307023eed5ead7fa89080650d3981fae1746378db9a400fab8a9632`.
+Paseo runtime remains `0.17.5-r4-8664f2c3f8f5`; this is an unpublished candidate,
+not a stable release.
 Paseo remains `0.17.5-r4-8664f2c3f8f5` with the peer-matched a7 phone-board
-payload. This is an unpublished candidate; fresh RC5 CI and release gates remain
+payload. This is an unpublished candidate; fresh RC6 CI and release gates remain
 required.
 
 ### Container image

@@ -4,12 +4,12 @@ This change retains the official Pi Web 0.12.0 npm build and its SDK 1.1
 compatibility pins. It does **not** install the plugins' Pi Web 0.10 overlay.
 The native desktop tabs and mobile picker are MCP → Omnigent → Agent Connect.
 
-## Coordinated candidate 0.15.28-rc.5 (unpublished)
+## Coordinated candidate 0.15.28-rc.6 (unpublished)
 
-This isolated HA `0.15.28-rc.5` worktree pins Agent Connect 0.1.27-rc.5 to its
+This isolated HA `0.15.28-rc.6` worktree pins Agent Connect 0.1.27-rc.6 to its
 exact archive, source commit and adapter digest. Paseo remains at
 `0.17.5-r4-8664f2c3f8f5` with the peer-matched a7 phone-board payload. Dirac's
-Omnigent 0.3.42-rc.5 archive and combined-patch hashes are recorded with their
+Omnigent 0.3.42-rc.6 archive and combined-patch hashes are recorded with their
 source commit in the candidate manifest; no rc.4 archive is used.
 The Next/eslint 16.4.6 security-gate remediation is carried by the coordinated
 Agent Connect adapter and Omnigent combined archive; HA's official Pi Web
@@ -18,12 +18,13 @@ Agent Connect adapter and Omnigent combined archive; HA's official Pi Web
 The candidate preserves the 0.15.27 bridge behavior below: startup progress is
 shown, the running brand and a saved-but-pending target are distinguished, and
 a target change requires an explicit stop followed by start. It does not switch
-or interrupt a running conversation. RC5 Store version comparison and the
+or interrupt a running conversation. RC6 Store version comparison and the
 mock-Supervisor upgrade check remain pending. No HA image is built locally, and
 no stable-release, real HAOS upgrade, or provider-acceptance claim is made here.
 The parent-reported CI run `45907889482` passed Ingress, upgrade runtime/
 comparison and amd64/aarch64 image jobs on base `d305d6bc`; Release was skipped.
-That is baseline evidence only. RC.5 has no CI result yet and needs a fresh run.
+That is RC5 baseline evidence only. RC6 has no CI result yet and needs a fresh
+run.
 
 ## Startup feedback (0.15.27)
 

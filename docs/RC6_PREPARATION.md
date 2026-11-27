@@ -1,32 +1,31 @@
-# RC6 preparation — 2026-11-27
+# RC6 companion candidate — 2026-11-27
 
-This worktree carries the reviewed C6 sessions HTTP acceptance helper and stages
-the canonical Agent Connect archive for RC6. The archive SHA-256 is
-`224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335`;
-its source base is `867d9065f609aa5e32d88f2d55cf07c5d3fadc3e`, build commit is
-`ba9f1c408a61193efc47c2914c6edd67c6f681b7`, runtime is
-`0.17.5-r4-8664f2c3f8f5`, and adapter patch SHA-256 is
+The HA candidate is `0.15.28-rc.6`, pairing Agent Connect `0.1.27-rc.6`
+with Omnigent `0.3.42-rc.6`. Paseo remains
+`0.17.5-r4-8664f2c3f8f5` with the peer-matched a7 payload.
+
+| Package | Source | Archive SHA-256 |
+| --- | --- | --- |
+| Agent Connect 0.1.27-rc.6 | `867d9065f609aa5e32d88f2d55cf07c5d3fadc3e` (archive built at `ba9f1c408a61193efc47c2914c6edd67c6f681b7`) | `224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335` |
+| Omnigent 0.3.42-rc.6 | `d4640bac3fd48b338c1f81230cb3d31fb75f79b2` | `91321ee0af4a8500317b726113e0c24332026f26142c4400b283cd55883f12e0` |
+
+Agent Connect adapter SHA-256 is
 `22d3a604d0c3ddc9305afe07f9f68524bec906fddb16636c08ac2783b4442a6c`.
+Omnigent's combined adapter SHA-256 is
+`8d55d6824307023eed5ead7fa89080650d3981fae1746378db9a400fab8a9632`;
+its archive metadata binds Paseo `0.1.27-rc.6` and removes the stale
+`JSON3` dependency without changing its effective dependency set.
 
-The archive is stored under `candidate-packages/pending/` and is deliberately
-not selected by `cli-runtime/versions.json` or the image. Dirac's exact
-Omnigent RC6 archive and combined-patch digest are not available yet. Keep the
-existing RC5 pair active until those exact values arrive; do not build an image
-from a mixed RC5/RC6 pair. The RC5 receipts and archives remain unchanged.
-
-The C6 helper sends a raw gzip request with bounded wire/decompressed sizes,
-checks a single gzip layer, and independently validates the normal
-`fetch().json()` client path against the image's owned loopback Pi Web server.
-Its local runtime receipt is
+The C6 sessions acceptance helper is part of the candidate image smoke. It
+checks a bounded raw gzip response and the ordinary `fetch().json()` path,
+using only the image's loopback Pi Web process and owned synthetic sessions.
+Its real local runtime receipt is
 [`logs/sessions-http-json-live-piweb-receipt.json`](../logs/sessions-http-json-live-piweb-receipt.json):
-that run used Pi Web 0.12.0, launched with `node bin/pi-web.js`, and the
-installed Next package was 16.3.8 (lockfile tarball integrity and installed
-package metadata SHA are recorded there). It proves the helper exercised a
-real Pi Web/Next server, but does not exercise Next 16.4.6.
+Pi Web 0.12.0 launched via `node bin/pi-web.js`, installed Next 16.3.8,
+with npm lock integrity and installed package hashes. This helper run is not
+a Next 16.4.6 image test. Agent Connect's canonical RC6 production HTTP evidence
+records Next.js 16.4.6 and valid gzip/JSON behavior in its build artifacts.
 
-Separately, the canonical Agent Connect RC6 build evidence records a production
-HTTP check on Next.js 16.4.6: one gzip layer, valid JSON from both `fetch()`
-and identity encoding. Its preserved output is in the canonical source
-archive's `artifacts/production-http-green.log` and
-`artifacts/verify-host-green-2.log`. No HA/k3s image has been built in this
-worktree.
+No HA image was built locally. Fresh HA RC6 image CI, Store comparison and
+mock-Supervisor upgrade/startup checks remain release gates; this is not a
+stable-release claim.

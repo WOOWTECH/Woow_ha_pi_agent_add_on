@@ -42,15 +42,16 @@ test('versions.json pins exact versions and the hash-checked frozen plugin archi
   assert.equal(manifest.find(row => row.file === path.basename(pins.agentConnect.archive)).runtimeRevision, pins.agentConnect.runtimeRevision, 'manifest.json');
 });
 
-test('coordinated rc.5 plugin archives and adapter digests stay unpublished candidates', () => {
-  assert.equal(pins.agentConnect.version, '0.1.27-rc.5');
+test('coordinated rc.6 plugin archives and adapter digests stay unpublished candidates', () => {
+  assert.equal(pins.agentConnect.version, '0.1.27-rc.6');
   assert.equal(pins.agentConnect.sourceCommit, '867d9065f609aa5e32d88f2d55cf07c5d3fadc3e');
-  assert.equal(pins.agentConnect.sha256, '581d5468020344dc93728da862118a4f8258a1a9a610ca16336e865345dceaa5');
-  assert.equal(pins.agentConnect.adapterSha256, 'aefb39dd6c378571ea8146bfa27fa153609da7460bc7198c3cfeb471ce02bcd6');
-  assert.equal(pins.omnigentPlugin.version, '0.3.42-rc.5');
-  assert.equal(pins.omnigentPlugin.sourceCommit, 'f6c20d5150a41d76627f2684e5f338c457f80d09');
-  assert.equal(pins.omnigentPlugin.sha256, '07a4c4fb0399a04d79bb73f518a088504147fbc5e02b115ef6cca77e80b1b63f');
-  assert.equal(pins.omnigentPlugin.combinedPatchSha256, '5bbbd15bf9b0734bb4964c79dd620ecbc3e0ccda26af3cec2cb6a488d8eba7aa');
+  assert.equal(pins.agentConnect.archiveBuildCommit, 'ba9f1c408a61193efc47c2914c6edd67c6f681b7');
+  assert.equal(pins.agentConnect.sha256, '224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335');
+  assert.equal(pins.agentConnect.adapterSha256, '22d3a604d0c3ddc9305afe07f9f68524bec906fddb16636c08ac2783b4442a6c');
+  assert.equal(pins.omnigentPlugin.version, '0.3.42-rc.6');
+  assert.equal(pins.omnigentPlugin.sourceCommit, 'd4640bac3fd48b338c1f81230cb3d31fb75f79b2');
+  assert.equal(pins.omnigentPlugin.sha256, '91321ee0af4a8500317b726113e0c24332026f26142c4400b283cd55883f12e0');
+  assert.equal(pins.omnigentPlugin.combinedPatchSha256, '8d55d6824307023eed5ead7fa89080650d3981fae1746378db9a400fab8a9632');
   const manifest = JSON.parse(read('candidate-packages/manifest.json')).artifacts;
   for (const pin of [pins.agentConnect, pins.omnigentPlugin]) {
     const row = manifest.find(item => item.file === path.basename(pin.archive));
@@ -59,22 +60,6 @@ test('coordinated rc.5 plugin archives and adapter digests stay unpublished cand
   }
   assert.equal(pins.agentConnect.paseoVersion, '0.17.5');
   assert.equal(pins.agentConnect.runtimeRevision, '0.17.5-r4-8664f2c3f8f5');
-});
-
-test('RC6 Agent Connect archive is hash-locked but staged until its matching Omnigent tuple arrives', () => {
-  const staged = JSON.parse(read('candidate-packages/pending/agent-connect-rc6.json'));
-  assert.equal(staged.status, 'staged-unpaired-do-not-select-for-image');
-  assert.equal(staged.version, '0.1.27-rc.6');
-  const archive = fs.readFileSync(path.join(root, staged.file));
-  assert.equal(createHash('sha256').update(archive).digest('hex'), staged.sha256);
-  const pkg = JSON.parse(tar('-xzOf', path.join(root, staged.file), 'package/package.json'));
-  assert.equal(pkg.name, '@woowtech/pi-paseo');
-  assert.equal(pkg.version, staged.version);
-  const adapter = tar('-xzOf', path.join(root, staged.file), 'package/host/adapter.patch');
-  assert.equal(createHash('sha256').update(adapter).digest('hex'), staged.adapterSha256);
-  assert.equal(staged.runtimeRevision, '0.17.5-r4-8664f2c3f8f5');
-  assert.equal(staged.pairedOmnigentVersionExpected, '0.3.42-rc.6');
-  assert.equal(pins.agentConnect.version, '0.1.27-rc.5', 'the active image remains on the exact RC5 pair until Omni RC6 is available');
 });
 
 test('the pinned Omnigent archive contains the exact candidate package identity', () => {
@@ -114,7 +99,7 @@ test('the Agent Connect archive is the pinned release: no bundled web client, ru
   assert.equal(runtime.dependencies['@getpaseo/cli'], paseoVersion, 'the daemon the runtime installs');
 });
 
-test('Agent Connect rc.5 carries the exact adapter and peer-matched r4/a7 payload', () => {
+test('Agent Connect rc.6 carries the exact adapter and peer-matched r4/a7 payload', () => {
   const pin = pins.agentConnect;
   const adapterMeta = JSON.parse(tar('-xzOf', path.join(root, pin.archive), 'package/host/adapter-meta.json'));
   const adapter = tar('-xzOf', path.join(root, pin.archive), 'package/host/adapter.patch');

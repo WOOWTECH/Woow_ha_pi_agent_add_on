@@ -1,21 +1,21 @@
-# Agent Connect HA packaging preparation — 2026-11-26 (0.15.28-rc.5)
+# Agent Connect HA packaging preparation — 2026-11-27 (0.15.28-rc.6)
 
 This document records an unpublished HA companion candidate based on the
-published 0.15.27 bridge fix. Agent Connect 0.1.27-rc.5 and Omnigent
-0.3.42-rc.5 are pinned to their exact archives and adapter digests. Paseo
-remains at `0.17.5-r4-8664f2c3f8f5` with the a7 phone-board payload. Fresh RC5
+published 0.15.27 bridge fix. Agent Connect 0.1.27-rc.6 and Omnigent
+0.3.42-rc.6 are pinned to their exact paired archives and adapter digests. Paseo
+remains at `0.17.5-r4-8664f2c3f8f5` with the a7 phone-board payload. Fresh RC6
 CI, Store comparison, and mock-Supervisor upgrade/startup checks remain
 outstanding. The pins are recorded in `cli-runtime/versions.json`.
 
 | Input | Candidate version | SHA-256 |
 | --- | --- | --- |
 | `@woowtech/pi-agent-shared-runtime` | 0.1.6 | `0914069fb0cf83f258cf81034bb16573f6e4242e8779cea47b4a5e841f98a937` |
-| `@woowtech/pi-paseo` (Agent Connect) | 0.1.27-rc.5 | `581d5468020344dc93728da862118a4f8258a1a9a610ca16336e865345dceaa5` |
-| `@woowtech/pi-omnigent-plugin` | 0.3.42-rc.5 | `07a4c4fb0399a04d79bb73f518a088504147fbc5e02b115ef6cca77e80b1b63f` |
+| `@woowtech/pi-paseo` (Agent Connect) | 0.1.27-rc.6 | `224c819fc14876c86f5febe0996a26e73ce618682faf611bac1b340b08b71335` |
+| `@woowtech/pi-omnigent-plugin` | 0.3.42-rc.6 | `91321ee0af4a8500317b726113e0c24332026f26142c4400b283cd55883f12e0` |
 
 HA retains official Pi Web 0.12.0 with its independent Ingress bridge. The
 Omnigent combined-patch SHA-256 is
-`5bbbd15bf9b0734bb4964c79dd620ecbc3e0ccda26af3cec2cb6a488d8eba7aa`. HA does not
+`8d55d6824307023eed5ead7fa89080650d3981fae1746378db9a400fab8a9632`. HA does not
 apply its 0.10 combined adapter; the official 0.12 bridge remains in use. The Agent Connect GUI supports older user-selected
 Paseo plugins by disabling the new selector while retaining Paseo pairing.
 
@@ -76,7 +76,7 @@ runs are preserved as historical evidence only.
 
 Earlier macOS, Ubuntu, Windows/WSL2 and HA Supervisor/provider acceptance notes
 below are historical evidence. The current HA companion candidate is
-0.15.28-rc.5. Fresh RC5 CI and version-changing Store comparison remain
+0.15.28-rc.6. Fresh RC6 CI and version-changing Store comparison remain
 required; no host was accessed for this preparation.
 
 Agent Connect now uses persistent SQLite guards on macOS; Linux retains flock.
