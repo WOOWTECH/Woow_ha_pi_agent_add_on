@@ -64,4 +64,18 @@ for (const [label, spec, file] of [['client', specs.client, clientFiles[0]], ['s
     report.anchors.push(entry);
   }
 }
+// Optional localisation aids for build-environment differences (never gate anything):
+//   PIN_BLOCK_SIZE=2048          -> sha256[0:8] of every block of the SSR page
+//   PIN_DUMP=<offset>:<length>   -> the SSR page text of that byte range
+const blockSize = Number(process.env.PIN_BLOCK_SIZE || 0);
+if (blockSize > 0 && exists(serverFile)) {
+  const bytes = read(serverFile);
+  const sha8 = [];
+  for (let at = 0; at < bytes.length; at += blockSize) sha8.push(hash(bytes.subarray(at, at + blockSize)).slice(0, 8));
+  report.serverBlocks = { blockSize, length: bytes.length, sha8 };
+}
+if (process.env.PIN_DUMP && exists(serverFile)) {
+  const [offset, length] = process.env.PIN_DUMP.split(':').map(Number);
+  report.serverDump = { offset, length, text: read(serverFile).subarray(offset, offset + length).toString('utf8') };
+}
 console.log(JSON.stringify(report, null, 2));

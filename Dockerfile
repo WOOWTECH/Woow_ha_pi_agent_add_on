@@ -215,7 +215,9 @@ RUN set -euo pipefail; \
 # Keep the official compiled 0.12.0 UI and private Ingress bridge. Add Omnigent
 # to React's desktop/mobile settings navigation immediately after MCP. The
 # patch checks client + SSR artifact hashes and syntax before writing either.
-RUN node /opt/patches/patch-omnigent-settings.mjs /opt/piweb/lib/node_modules/@agegr/pi-web
+# Diagnostic first (never gates): prints this build's compiled-settings pins so CI and each architecture can be compared.
+RUN PIN_BLOCK_SIZE=2048 node /opt/patches/print-compiled-settings-pins.mjs /opt/piweb/lib/node_modules/@agegr/pi-web || true; \
+    node /opt/patches/patch-omnigent-settings.mjs /opt/piweb/lib/node_modules/@agegr/pi-web
 
 
 # Omnigent is built once per architecture, never downloaded on first activation.
