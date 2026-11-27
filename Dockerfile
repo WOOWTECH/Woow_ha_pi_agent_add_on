@@ -439,6 +439,7 @@ RUN PINS=/usr/local/share/woow-ha-pi-agent/versions.json \
 
 COPY rootfs/ /
 COPY tests/omnigent-image-smoke.mjs /tmp/omnigent-image-smoke.mjs
+COPY tests/sessions-http-json-acceptance.mjs /tmp/sessions-http-json-acceptance.mjs
 COPY tests/paseo-image-smoke.mjs /tmp/paseo-image-smoke.mjs
 COPY tests/paseo-native-runtime.mjs /tmp/paseo-native-runtime.mjs
 COPY tests/shared-distribution.test.mjs /tmp/shared-distribution.test.mjs
@@ -491,7 +492,7 @@ RUN --network=none sed 's/listen 172.30.32.1:30142/listen 127.0.0.1:30142/' /etc
        /opt/woow/pi-agent-shared-runtime/tests/extension-scan.test.mjs \
        /opt/woow/pi-agent-shared-runtime/tests/bridge.test.mjs \
        /opt/woow/pi-agent-shared-runtime/tests/mcp-adapter.test.mjs \
-    && rm /tmp/omnigent-image-smoke.mjs /tmp/paseo-image-smoke.mjs /tmp/paseo-native-runtime.mjs /tmp/shared-distribution.test.mjs /tmp/shared-sync-only.test.mjs
+    && rm /tmp/omnigent-image-smoke.mjs /tmp/sessions-http-json-acceptance.mjs /tmp/paseo-image-smoke.mjs /tmp/paseo-native-runtime.mjs /tmp/shared-distribution.test.mjs /tmp/shared-sync-only.test.mjs
 
 # SHELL is what pi-web 0.9.0's browser terminal spawns:
 #     process.env.SHELL || "/bin/sh"   with argv ["-l"]

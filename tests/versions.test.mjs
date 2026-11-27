@@ -160,3 +160,15 @@ test('the Dockerfile, CI and image checks read the pins instead of repeating the
   assert.match(dockerfile, /PI_PASEO_EXPECTED_VERSION="\$\(< \/tmp\/pins\/agent-connect\/version\)"/);
   assert.match(dockerfile, /PI_PASEO_EXPECTED_RUNTIME_REVISION="\$\(< \/tmp\/pins\/agent-connect\/runtime-revision\)"/);
 });
+
+test('the image smoke exercises real sessions JSON over gzip HTTP with owned synthetic fixtures', () => {
+  const smoke = read('tests/omnigent-image-smoke.mjs');
+  const acceptance = read('tests/sessions-http-json-acceptance.mjs');
+  const dockerfile = read('Dockerfile');
+  assert.match(smoke, /verifySessionsHttpJson\(/);
+  assert.match(dockerfile, /^COPY tests\/sessions-http-json-acceptance\.mjs \/tmp\/sessions-http-json-acceptance\.mjs$/m);
+  assert.match(acceptance, /accept-encoding': 'gzip'/);
+  assert.match(acceptance, /gunzipSync\(response\.body\)/);
+  assert.match(acceptance, /JSON\.parse\(decoded\.toString\('utf8'\)\)/);
+  assert.match(acceptance, /minimumSessions = 24/);
+});

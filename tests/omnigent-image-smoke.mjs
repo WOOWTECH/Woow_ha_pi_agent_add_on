@@ -138,6 +138,11 @@ try {
   assert.equal(fs.existsSync(path.join(temporary, 'pi-paseo')), false, 'no Paseo state, so no daemon was started');
   assert.equal(fs.existsSync(path.join(process.env.PI_OMNIGENT_STATE_DIR, 'onboarding.json')), false);
   assert.equal(fs.existsSync(path.join(temporary, 'sessions')), false);
+  const { verifySessionsHttpJson } = await import(new URL('./sessions-http-json-acceptance.mjs', import.meta.url));
+  const sessionsJson = await verifySessionsHttpJson({ baseUrl: 'http://127.0.0.1:30141', agentDir: temporary,
+    piWebRoot: '/usr/local/lib/node_modules/@agegr/pi-web' });
+  assert.equal(sessionsJson.returnedSyntheticSessions, 24);
+  console.log(`SMOKE: live sessions HTTP JSON gzip response parsed (${sessionsJson.sessions} synthetic sessions, ${sessionsJson.decodedBytes} decoded bytes)`);
   console.log('SMOKE: web ready; waiting for offline activation receipt');
   const bootPath = path.join(temporary, 'omnigent-plugin/boot.json');
   for (let attempt = 0; attempt < 45 && !fs.existsSync(bootPath); attempt++) await new Promise(resolve => setTimeout(resolve, 1000));
