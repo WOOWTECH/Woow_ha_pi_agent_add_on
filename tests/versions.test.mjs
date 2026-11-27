@@ -179,3 +179,23 @@ test('the image smoke exercises real sessions JSON over gzip HTTP with owned syn
   assert.match(acceptance, /result\.on\('error'/);
   assert.match(acceptance, /minimumSessions = 24/);
 });
+
+
+test('Pi Web RC6 is rebuilt from exact 0.12.0 source with a hash-locked Next 16.4.6 security gate', () => {
+  const pin = JSON.parse(read('patches/pi-web-source/build-pins.json'));
+  const patch = read(pin.patch);
+  assert.equal(pin.sourceRef, 'v0.12.0');
+  assert.equal(pin.sourceCommit, '894e1a28dbeeb7b457c7712e495d975fe9927b89');
+  assert.equal(createHash('sha256').update(patch).digest('hex'), pin.patchSha256);
+  assert.equal(pin.nextVersion, '16.4.6');
+  assert.equal(pin.eslintConfigNextVersion, '16.4.6');
+  assert.equal(pin.auditLevel, 'high');
+  assert.match(patch, /"next": "16\.4\.6"/);
+  assert.match(patch, /"eslint-config-next": "16\.4\.6"/);
+  assert.match(patch, /"undici": "8\.12\.2"/);
+  assert.match(read('Dockerfile'), /git -C \"\$ROOT\" checkout --detach \"\$PI_WEB_SOURCE_COMMIT\"/);
+  assert.match(read('Dockerfile'), /npm ci --include=dev/);
+  assert.match(read('Dockerfile'), /npm audit --audit-level=high/);
+  assert.match(read('Dockerfile'), /NEXT_TELEMETRY_DISABLED=1 npm run build/);
+  assert.match(read('Dockerfile'), /node_modules\/next\/package\.json/);
+});

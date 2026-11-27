@@ -22,7 +22,7 @@ const frame = '(0,r.jsx)("iframe",{title:"Omnigent",src:' + prefix + '+"/omnigen
 const paseoFrame = frame.replaceAll("Omnigent", "Agent Connect").replace("/omnigent?", "/paseo/setup?");
 const specs = {
   client: {
-    sha256: 'f273303c76f7ab856768e315526cdc7cd485fba7f930e649337c57289d96093f',
+    sha256: '4ce31ce53f1f76cb476137d28e932a898f4ed1680fa9f4b7c3a415c0c30a435f',
     replacements: [
       ['"/icons/catppuccin"', iconBase],
       [sections, expanded],
@@ -32,28 +32,28 @@ const specs = {
     ],
   },
   server: {
-    sha256: 'a1205fad45252a602e50e13a3c5c2fd21c7968b002d54ad939984052953a2d71',
+    sha256: '86670efdf0d94a68e7b8e4cd61a73a4eb331ef1435215c5d6529cf8b4c7a5372',
     replacements: [
       ['"/icons/catppuccin"', iconBase],
       [sections, expanded],
       ['{id:"mcp",label:k("settings.mcp")}', '{id:"mcp",label:k("settings.mcp")},{id:"omnigent",label:"Omnigent"},{id:"paseo",label:"Agent Connect"}'],
-      ['u("mcp",(0,r.jsx)(zG,{embedded:!0,cwd:a,trust:h,onTrustProject:i,onProjectTrustChanged:j,onClose:d},a??""))',
-        'u("mcp",(0,r.jsx)(zG,{embedded:!0,cwd:a,trust:h,onTrustProject:i,onProjectTrustChanged:j,onClose:d},a??"")),l==="omnigent"&&u("omnigent",' + frame + '),l==="paseo"&&u("paseo",' + paseoFrame + ')'],
+      ['u("mcp",(0,r.jsx)(zH,{embedded:!0,cwd:a,trust:h,onTrustProject:i,onProjectTrustChanged:j,onClose:d},a??""))',
+        'u("mcp",(0,r.jsx)(zH,{embedded:!0,cwd:a,trust:h,onTrustProject:i,onProjectTrustChanged:j,onClose:d},a??"")),l==="omnigent"&&u("omnigent",' + frame + '),l==="paseo"&&u("paseo",' + paseoFrame + ')'],
     ],
   },
 };
 // References include the pre-rendered HTML and RSC, not just the JS manifest.
 // Keep the hash width unchanged so length-prefixed flight content stays valid.
-const oldName = 'page-b3286479e7c79f5d.js';
+const oldName = 'page-7e8ae5987433d058.js';
 const references = [
-  ['index.html', 'f3586c304ad4853a5d844ca82babc0daf3b0eb32508188cd1c3515543d1de264'],
-  ['_global-error/page_client-reference-manifest.js', '287a194231a779c5e5afe692a224e3bf9f88249d70a9dea8612a6386ad2d3567'],
-  ['_not-found/page_client-reference-manifest.js', '69c95b97255eea379a7f74b69bf8fc37af377ba72fd267f65176f2de32cadf5c'],
-  ['login/page_client-reference-manifest.js', '528a8132af338691169ca3fd425054debc3a60ee5b2405edee0f1ef5684165d7'],
-  ['page_client-reference-manifest.js', '2f99858d8655e7a67e138c40a8d5d376d3daed6e9d99b920777fd6e5b1c2e8e1'],
-  ['index.segments/__PAGE__.segment.rsc', '69b2c5407307b0e2b00d3cc8e020ffb52eed6854960319bea38536071d79a2b1'],
-  ['index.segments/_full.segment.rsc', '05dc21b7d3c4185d7e88c19b4f3fa8eaf359d17f90338bf3c9fec6c108597f1a'],
-  ['index.rsc', '05dc21b7d3c4185d7e88c19b4f3fa8eaf359d17f90338bf3c9fec6c108597f1a'],
+  ['index.html', 'cbe8f6c4d38dcf349dbab1e08743fbc06b6ecaefca7ec52e4f34d74011ba4ef8'],
+  ['_global-error/page_client-reference-manifest.js', 'bd94af348c2cf0f9c9563827e8ca4dbb332fc015d037ca0212bf4b8d22c9869c'],
+  ['_not-found/page_client-reference-manifest.js', 'c83eb850303ca0997a5b946944c8a53c84f02e5ae6ce0a49268bca9b0edcfac7'],
+  ['login/page_client-reference-manifest.js', '757b6173505c9946c6c2f9b388bbf7a360395d033b2be39896aa3b5a7e1b8f7d'],
+  ['page_client-reference-manifest.js', 'c49ca41d477a8b5b89a9bc32633062880a16a0807b457b02d7743b3cf6218508'],
+  ['index.segments/__PAGE__.segment.rsc', '3cce9dc8a87acb539e25037029230e4a19d582b58eea73d819dcb9ef76014e60'],
+  ['index.segments/_full.segment.rsc', '339552c62b086db7b522691f22e72513052e6f5732ecda8b796ffc321b4fa0bf'],
+  ['index.rsc', '339552c62b086db7b522691f22e72513052e6f5732ecda8b796ffc321b4fa0bf'],
 ];
 const hash = text => createHash('sha256').update(text).digest('hex');
 function replaceOnce(text, from, to) {

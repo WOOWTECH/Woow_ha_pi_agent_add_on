@@ -70,7 +70,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates curl gnupg build-essential python3 \
+       ca-certificates curl gnupg build-essential python3 git \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
@@ -81,11 +81,10 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Pinned: upstream ships absolute-path assets and 100+ /api/* routes that the
-# ingress shim rewrites in nginx.conf. A floating `@latest` means an upstream
-# refactor of _next chunk names, RSC prefetch shape, or a new /api/* route can
-# silently regress the shim without any local code change. Bump manually after
-# validating a new upstream release doesn't break Ingress.
+# Pi Web source, lock, security audit and compiled output are pinned in
+# patches/pi-web-source/build-pins.json. Build from the exact upstream tag rather
+# than reusing its precompiled npm artifact, so the effective Next runtime and
+# the compiled tree are the same reviewed 16.4.6 build.
 #
 # 0.9.0 notes, read out of the built middleware.js rather than release notes:
 #   - the trust guard's matcher widened from "/api/:path*" to
@@ -98,15 +97,31 @@ RUN apt-get update \
 #     upstream. Nothing in this add-on references either by name; the shim
 #     matches on the /api/ prefix, not a route list.
 ARG PI_WEB_VERSION=0.12.0
-RUN npm install -g --omit=dev --prefix=/opt/piweb "@agegr/pi-web@${PI_WEB_VERSION}" \
-    && rm -rf /tmp/npm-cache
-
-# Pi Web 0.12 pins Pi SDK 1.1, whose caret dependencies now select codemode
-# 1.4. That release removed MCP_TYPESCRIPT_PREAMBLE, breaking SDK imports
-# before the server starts. Keep the related runtime packages on SDK 1.1.
-RUN npm install --omit=dev --ignore-scripts --prefix=/opt/piweb/lib/node_modules/@agegr/pi-web \
-      @earendil-works/pi-codemode@1.1.0 @earendil-works/pi-mcp@1.1.0 @earendil-works/chord@1.1.0 \
-    && rm -rf /tmp/npm-cache
+ARG PI_WEB_SOURCE_COMMIT=894e1a28dbeeb7b457c7712e495d975fe9927b89
+COPY patches/pi-web-source/ /opt/pi-web-source/
+COPY patches/ /opt/patches/
+RUN set -euo pipefail; \
+    ROOT=/opt/piweb/lib/node_modules/@agegr/pi-web; \
+    mkdir -p "$(dirname "$ROOT")" /opt/piweb/bin; \
+    git init "$ROOT"; \
+    git -C "$ROOT" remote add origin https://github.com/agegr/pi-web.git; \
+    git -C "$ROOT" fetch --depth=1 origin refs/tags/v0.12.0:refs/tags/v0.12.0; \
+    git -C "$ROOT" checkout --detach "$PI_WEB_SOURCE_COMMIT"; \
+    test "$(git -C "$ROOT" rev-parse HEAD)" = "$PI_WEB_SOURCE_COMMIT"; \
+    test "$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").version')" = "$PI_WEB_VERSION"; \
+    echo "$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").patchSha256')  /opt/pi-web-source/pi-web-0.12.0-next-16.4.6.patch" | sha256sum -c -; \
+    git -C "$ROOT" apply /opt/pi-web-source/pi-web-0.12.0-next-16.4.6.patch; \
+    echo "$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").patchedPackageJsonSha256')  $ROOT/package.json" | sha256sum -c -; \
+    echo "$(node -p 'require("/opt/patches/pi-web-source/build-pins.json").patchedPackageLockSha256')  $ROOT/package-lock.json" | sha256sum -c -; \
+    node -e 'const p=require(process.argv[1]); if(p.version!==process.argv[2]||p.dependencies.next!=="16.4.6"||p.devDependencies["eslint-config-next"]!=="16.4.6")process.exit(1)' "$ROOT/package.json" "$PI_WEB_VERSION"; \
+    cd "$ROOT"; npm ci --include=dev --no-fund; npm audit --audit-level=high --no-fund; \
+    mapfile -d '' FILES < <(find "$ROOT" -path '*@earendil-works/*/dist/*/tools/path-utils.js' -print0); \
+    test "${#FILES[@]}" -ge 1; node /opt/patches/fix-unicode-space-paths.mjs "${FILES[@]}"; \
+    NEXT_TELEMETRY_DISABLED=1 npm run build; \
+    node -e 'const p=require(process.argv[1]); if(p.version!=="16.4.6")process.exit(1)' "$ROOT/node_modules/next/package.json"; \
+    npm prune --omit=dev --ignore-scripts --no-fund; \
+    ln -s ../lib/node_modules/@agegr/pi-web/bin/pi-web.js /opt/piweb/bin/pi-web; \
+    rm -rf /tmp/npm-cache
 
 # Reproducible, architecture-aware system CLIs. User-scoped binaries in the
 # persistent HOME still take precedence. Separate package locks, builder runs,
@@ -170,7 +185,6 @@ RUN set -euo pipefail; \
 # non-breaking space still resolves) while writes are never rewritten. It
 # asserts every hunk, so an upstream bump fails the build rather than shipping
 # an image that quietly lost the fix.
-COPY patches/ /opt/patches/
 RUN set -euo pipefail; \
     mapfile -d '' FILES < <(find /opt/piweb/lib/node_modules/@agegr/pi-web \
       -path '*@earendil-works/*/dist/*/tools/path-utils.js' -print0); \
